@@ -1,0 +1,7 @@
+# Binaries
+bigfin_app
+test_player_bin
+
+# Python cache
+__pycache__/
+*.pyc

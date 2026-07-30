@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="gradSab" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#854d0e" />
+      <stop offset="100%" stop-color="#18181b" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#gradSab)" rx="16" />
+  <rect width="400" height="400" fill="black" opacity="0.2" />
+  <polygon points="200,80 240,160 330,170 260,230 280,320 200,270 120,320 140,230 70,170 160,160" fill="#eab308" opacity="0.6" />
+  <text x="200" y="320" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">STORIES FROM THE WESTERN FRONT</text>
+  <text x="200" y="355" font-family="sans-serif" font-size="16" font-weight="bold" fill="#eab308" text-anchor="middle">VARIOUS ARTISTS / SABATON</text>
+</svg>
