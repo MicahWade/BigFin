@@ -45,15 +45,10 @@ Bigfin is structured into decoupled subsystem layers:
 
 ```
                   ┌─────────────────────────────────────┐
-                  │    PyQt6 QML Spatial TV Interface   │
-                  │ (Kirigami / Main.qml / HomeView)    │
+                  │     Kirigami QML Spatial TV UI      │
+                  │   (ui/qml/main.qml / HomeView)      │
                   └──────────────────┬──────────────────┘
-                                     │ SessionBridge (Qt Signals & Slots)
-                  ┌──────────────────┴──────────────────┐
-                  │          Session Manager            │
-                  │    (~/.config/bigfin/sessions.json) │
-                  └──────────────────┬──────────────────┘
-                                     │
+                                     │ QML Scene Window
                   ┌──────────────────┴──────────────────┐
                   │     Go Core Engine (cmd & pkg)      │
                   ├──────────────────┬──────────────────┤
@@ -80,10 +75,6 @@ Bigfin is structured into decoupled subsystem layers:
 │   │   ├── components/       # VideoPlayer, MediaGrid, ItemDetails, ServerAuth
 │   │   └── assets/           # Icons and preview poster assets
 │   └── assets/               # Mock poster SVGs for offline previews
-├── scripts/                  # Development & testing scripts
-│   ├── test_video_player.py  # HLS playlist verification script
-│   └── ui_test_capture.py    # Headless QML UI capture utility
-├── preview_ui.py             # Main PyQt6 / QML UI launcher script & SessionBridge
 ├── run_bigfin.sh             # Linux launcher & desktop entry installer
 ├── Makefile                  # Build, test, run, and clean tasks
 ├── CONTRIBUTING.md           # Developer setup and contribution guide
@@ -99,8 +90,7 @@ Before running or building Bigfin, ensure your system has the following installe
 | Dependency | Minimum Version | Description |
 | :--- | :--- | :--- |
 | **Go** | 1.22+ | Backend compilation and player engine |
-| **Python 3** | 3.8+ | PyQt6 QML runtime launcher |
-| **PyQt6 & Qt6 QML** | 6.0+ | UI engine & declarative Qt components |
+| **Qt6 QML / qmlscene** | 6.0+ | UI engine & declarative Qt scene viewer |
 | **KDE Kirigami** | 2.15+ / 6.0+ | Spatial 10-foot UI framework |
 | **mpv** | 0.34+ | Primary hardware-accelerated video player |
 
@@ -108,13 +98,13 @@ Before running or building Bigfin, ensure your system has the following installe
 
 #### Fedora / RHEL:
 ```bash
-sudo dnf install go python3 python3-pyqt6 qt6-qtdeclarative-devel kf6-kirigami-devel mpv
+sudo dnf install go qt6-qtdeclarative-devel kf6-kirigami-devel mpv
 ```
 
 #### Ubuntu / Debian:
 ```bash
 sudo apt update
-sudo apt install golang-go python3 python3-pyqt6 qml-module-org-kde-kirigami2 mpv
+sudo apt install golang-go qmlscene qml-module-org-kde-kirigami2 mpv
 ```
 
 ---
@@ -160,7 +150,7 @@ Bigfin is engineered for seamless operation using a TV D-Pad remote or keyboard:
 
 ## 🧪 Testing & Verification
 
-Bigfin includes test suites for Go engine logic, API communication, and UI compilation.
+Bigfin includes test suites for Go engine logic and API communication.
 
 ### Run Go Unit Tests
 ```bash
@@ -171,11 +161,6 @@ make test
 To test streaming against an active Jellyfin server:
 ```bash
 JELLYFIN_TEST_SERVER="http://your-server:8096" JELLYFIN_TEST_TOKEN="your-token" go test -v ./pkg/player
-```
-
-### Run Python & QML UI Verification
-```bash
-make test-ui
 ```
 
 ---

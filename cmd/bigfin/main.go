@@ -77,17 +77,30 @@ func main() {
 
 	log.Println("[READY] Bigfin backend environment initialized. Launching QML TV window...")
 
-	// Launch QML spatial window on desktop with Wayland/X11, GPU access, network, and host filesystem access
-	qmlCmd := exec.Command("flatpak", "run",
-		"--socket=wayland",
-		"--socket=x11",
-		"--device=dri",
-		"--share=network",
-		"--filesystem=host",
-		"--command=qmlscene",
-		"org.kde.Sdk",
-		qmlPath,
-	)
+	var qmlCmd *exec.Cmd
+	if qmlBin, err := exec.LookPath("qmlscene"); err == nil {
+		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
+		qmlCmd = exec.Command(qmlBin, qmlPath)
+	} else if qmlBin, err := exec.LookPath("qml6"); err == nil {
+		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
+		qmlCmd = exec.Command(qmlBin, qmlPath)
+	} else if qmlBin, err := exec.LookPath("qml"); err == nil {
+		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
+		qmlCmd = exec.Command(qmlBin, qmlPath)
+	} else {
+		log.Println("[INFO] Native qmlscene binary not found; falling back to Flatpak org.kde.Sdk environment...")
+		qmlCmd = exec.Command("flatpak", "run",
+			"--socket=wayland",
+			"--socket=x11",
+			"--device=dri",
+			"--share=network",
+			"--filesystem=host",
+			"--command=qmlscene",
+			"org.kde.Sdk",
+			qmlPath,
+		)
+	}
+
 	qmlCmd.Env = append(os.Environ(), "QT_QPA_PLATFORM=wayland;xcb")
 	qmlCmd.Stdout = os.Stdout
 	qmlCmd.Stderr = os.Stderr

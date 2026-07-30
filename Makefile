@@ -1,9 +1,8 @@
 # Bigfin - Native Jellyfin Media Client Makefile
 
 GO ?= $(shell command -v go 2>/dev/null || echo /tmp/go_bin/go/bin/go)
-PYTHON ?= python3
 
-.PHONY: all build test test-ui run clean help
+.PHONY: all build test run clean help
 
 all: build test
 
@@ -19,23 +18,15 @@ test:
 	@echo "==> Running Go unit tests..."
 	$(GO) test -v ./...
 
-## test-ui: Run Python QML UI syntax check & headless screenshot test
-test-ui:
-	@echo "==> Verifying Python UI components..."
-	$(PYTHON) -m py_compile preview_ui.py scripts/test_video_player.py scripts/ui_test_capture.py
-	@echo "==> Running headless UI capture test..."
-	$(PYTHON) scripts/ui_test_capture.py
-
-## run: Launch Bigfin native UI via Python launcher
-run:
-	@echo "==> Launching Bigfin UI..."
+## run: Launch Bigfin client
+run: build
+	@echo "==> Launching Bigfin Client..."
 	./run_bigfin.sh
 
-## clean: Remove build binaries, python cache, and test output
+## clean: Remove build binaries and test output
 clean:
-	@echo "==> Cleaning build artifacts and cache..."
-	rm -rf bin/ bigfin_app test_player_bin screenshots/ __pycache__/ *.pyc
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@echo "==> Cleaning build artifacts..."
+	rm -rf bin/ bigfin_app test_player_bin screenshots/
 
 ## help: Display available Makefile targets
 help:

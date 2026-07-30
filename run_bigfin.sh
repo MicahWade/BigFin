@@ -42,11 +42,16 @@ Categories=AudioVideo;Player;TV;
 StartupWMClass=bigfin
 EOF
 
-# Priority system python paths over brew Qt overrides if needed
-export PATH=/usr/bin:$PATH
-export PYTHONPATH=""
-export LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
-
-# Launch Bigfin UI from project root
 cd "$SCRIPT_DIR"
-exec python3 preview_ui.py "$@"
+
+# Launch compiled binary if present, otherwise launch via Go
+if [ -f "$SCRIPT_DIR/bin/bigfin_app" ]; then
+    exec "$SCRIPT_DIR/bin/bigfin_app" "$@"
+elif command -v go >/dev/null 2>&1; then
+    exec go run ./cmd/bigfin "$@"
+elif [ -f "/tmp/go_bin/go/bin/go" ]; then
+    exec /tmp/go_bin/go/bin/go run ./cmd/bigfin "$@"
+else
+    echo "[ERROR] Neither compiled binary nor Go runtime was found."
+    exit 1
+fi
