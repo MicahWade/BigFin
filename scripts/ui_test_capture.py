@@ -10,7 +10,7 @@ from PyQt6.QtQuick import QQuickWindow
 
 def main():
     print("==================================================")
-    print(" StreamInator Live Jellyfin Server Verification")
+    print(" Bigfin Headless UI Verification & Screenshot Capture")
     print("==================================================")
 
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -21,14 +21,17 @@ def main():
     app.setApplicationName("org.bigfin.client")
     app.setDesktopFileName("org.bigfin.client")
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    logo_path = os.path.join(base_dir, 'Logo.png')
+    # Project root directory (one level up from scripts/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+
+    logo_path = os.path.join(project_root, 'Logo.png')
     if os.path.exists(logo_path):
         app.setWindowIcon(QIcon(logo_path))
 
     engine = QQmlApplicationEngine()
 
-    qml_dir = os.path.join(base_dir, 'ui', 'qml')
+    qml_dir = os.path.join(project_root, 'ui', 'qml')
     engine.addImportPath(qml_dir)
 
     for path in ['/usr/lib64/qt6/qml', '/usr/lib/qt6/qml', '/usr/lib/qt5/qml']:
@@ -46,14 +49,8 @@ def main():
     if isinstance(window, QQuickWindow):
         window.show()
 
-    output_dir = "/home/Bitpoke/.gemini/antigravity-cli/brain/5b162ac3-10ac-44e9-bf8f-7a0057eb1f0e"
+    output_dir = os.environ.get("UI_CAPTURE_DIR", os.path.join(project_root, "screenshots"))
     os.makedirs(output_dir, exist_ok=True)
-
-    def send_key(key):
-        press = QKeyEvent(QKeyEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier)
-        release = QKeyEvent(QKeyEvent.Type.KeyRelease, key, Qt.KeyboardModifier.NoModifier)
-        QGuiApplication.postEvent(window, press)
-        QGuiApplication.postEvent(window, release)
 
     def capture_step(filename):
         if isinstance(window, QQuickWindow):

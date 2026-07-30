@@ -12,8 +12,8 @@ Rectangle {
 
     // Flow State: 1 = Enter Server IP, 2 = Enter User Credentials
     property int currentStep: 1
-    property string rawInputIp: "100.85.125.82"
-    property string formattedUrl: "http://100.85.125.82:8096"
+    property string rawInputIp: ""
+    property string formattedUrl: ""
     property string discoveredServerName: ""
     property string discoveredVersion: ""
 
@@ -115,7 +115,7 @@ Rectangle {
                             id: ipInput
                             Layout.fillWidth: true
                             text: serverModal.rawInputIp
-                            placeholderText: "e.g. 100.85.125.82 or http://192.168.1.50:8096"
+                            placeholderText: "e.g. 192.168.1.50 or http://jellyfin.local:8096"
                             placeholderTextColor: "#64748b"
                             font.pixelSize: 16
                             font.bold: true
@@ -394,7 +394,7 @@ Rectangle {
 
     function sanitizeUrl(input) {
         var str = input.trim()
-        if (str === "") return "http://100.85.125.82:8096"
+        if (str === "") return "http://localhost:8096"
         if (!str.startsWith("http://") && !str.startsWith("https://")) {
             str = "http://" + str
         }

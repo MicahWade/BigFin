@@ -2,6 +2,7 @@ package player
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -162,8 +163,12 @@ func TestVerifyAudioAndVisuals(t *testing.T) {
 }
 
 func TestJellyfinStreamPlayback(t *testing.T) {
-	serverURL := "http://100.85.125.82:8096"
-	token := "0b8630ceeb2f4da6a4230bdac8f4a599"
+	serverURL := os.Getenv("JELLYFIN_TEST_SERVER")
+	token := os.Getenv("JELLYFIN_TEST_TOKEN")
+	if serverURL == "" {
+		t.Skip("Skipping live Jellyfin stream test (set JELLYFIN_TEST_SERVER and JELLYFIN_TEST_TOKEN to enable)")
+		return
+	}
 
 	client := jellyfin.NewClient(serverURL)
 	client.AccessToken = token

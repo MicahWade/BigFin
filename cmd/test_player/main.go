@@ -16,8 +16,11 @@ func main() {
 	fmt.Println(" Bigfin Go Player Engine & Stream Verification ")
 	fmt.Println("==================================================")
 
-	serverURL := "http://100.85.125.82:8096"
-	token := "0b8630ceeb2f4da6a4230bdac8f4a599"
+	serverURL := os.Getenv("JELLYFIN_SERVER_URL")
+	if serverURL == "" {
+		serverURL = "http://localhost:8096"
+	}
+	token := os.Getenv("JELLYFIN_TOKEN")
 	if len(os.Args) > 1 {
 		serverURL = os.Args[1]
 	}

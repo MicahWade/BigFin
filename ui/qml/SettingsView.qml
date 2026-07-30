@@ -16,7 +16,7 @@ Item {
     property int activeCategory: -1
 
     // Category 0: Network & Server Settings (5 items)
-    property string serverUrl: "http://100.85.125.82:8096"
+    property string serverUrl: "http://localhost:8096"
     property bool autoDiscovery: true
     property bool sslBypass: false
     property var connectTimeouts: ["5 Seconds", "10 Seconds", "30 Seconds"]
@@ -745,7 +745,7 @@ Item {
             }
             else if (itemIdx === 1) debugLoggingEnabled = !debugLoggingEnabled
             else {
-                serverUrl = "http://100.85.125.82:8096"; autoDiscovery = true; sslBypass = false;
+                serverUrl = "http://localhost:8096"; autoDiscovery = true; sslBypass = false;
                 startupViewEnabled = true; themeStyleIdx = 0; AppData.activeThemeIndex = 0;
             }
         }

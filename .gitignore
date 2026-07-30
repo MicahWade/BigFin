@@ -1,7 +1,33 @@
-# Binaries
+# Go Binaries & Build Outputs
 bigfin_app
 test_player_bin
+bin/
+*.exe
+*.exe.manifest
+*.dll
+*.so
+*.dylib
+*.test
+*.out
 
-# Python cache
+# Python Cache & Virtual Environments
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+.venv/
+env/
+
+# Test & Debug Outputs
+screenshots/
+*.png.tmp
+*.log
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store

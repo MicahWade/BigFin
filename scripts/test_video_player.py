@@ -1,13 +1,25 @@
+#!/usr/bin/env python3
 import sys
+import os
 import urllib.request
 import json
 
-server_url = "http://100.85.125.82:8096"
-token = "0b8630ceeb2f4da6a4230bdac8f4a599"
+server_url = os.environ.get("JELLYFIN_SERVER_URL", "http://localhost:8096")
+token = os.environ.get("JELLYFIN_TOKEN", "")
+
+if len(sys.argv) > 1:
+    server_url = sys.argv[1]
+if len(sys.argv) > 2:
+    token = sys.argv[2]
 
 print("==================================================")
 print(" Bigfin Media Stream Test - Direct Jellyfin HLS ")
 print("==================================================")
+print(f"Target Server: {server_url}")
+
+if not token:
+    print("[NOTE] No JELLYFIN_TOKEN provided. Provide token via environment variable or argument to test stream access.")
+    sys.exit(0)
 
 url = f"{server_url}/Items?api_key={token}&IncludeItemTypes=Episode,Movie&Recursive=true&Limit=1"
 req = urllib.request.Request(
@@ -31,8 +43,8 @@ try:
                 pl_content = pl_resp.read().decode('utf-8')
                 print("[PLAYLIST VERIFICATION]")
                 print(pl_content.strip())
-                print("[TEST RESULT] HLS master playlist valid & ready for QtMultimedia video streaming!")
+                print("[TEST RESULT] HLS master playlist valid & ready for streaming!")
         else:
-            print("[ERROR] No media items returned.")
+            print("[ERROR] No media items returned from server.")
 except Exception as e:
     print(f"[ERROR] Test failed: {e}")

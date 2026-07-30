@@ -13,8 +13,8 @@ Item {
     // Startup Server IP Dialog State
     property bool showStartupServerModal: !AppData.isAuthenticated
     property bool showSessionSwitchModal: false
-    property string configuredServerIp: "http://100.85.125.82:8096"
-    property string serverName: "StreamInator"
+    property string configuredServerIp: "http://localhost:8096"
+    property string serverName: "Bigfin"
 
     // Dynamic Theme Gradient Background (Updates Real-time when Theme Changes)
     Rectangle {
