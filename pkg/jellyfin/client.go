@@ -7,6 +7,7 @@ import "fmt"
 import "io"
 import "net/http"
 import "net/url"
+import "strings"
 import "sync"
 import "time"
 
@@ -27,10 +28,50 @@ type Client struct {
 	cacheMu     sync.RWMutex
 }
 
+// ParseServerURLs parses a single string or comma/space separated list of server IP/host URLs into normalized target URLs.
+func ParseServerURLs(input string) []string {
+	if strings.TrimSpace(input) == "" {
+		return []string{"http://localhost:8096"}
+	}
+	rawParts := strings.FieldsFunc(input, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r'
+	})
+	var urls []string
+	for _, p := range rawParts {
+		subTokens := strings.Fields(p)
+		for _, token := range subTokens {
+			token = strings.TrimSpace(token)
+			if token == "" {
+				continue
+			}
+			if !strings.HasPrefix(token, "http://") && !strings.HasPrefix(token, "https://") {
+				token = "http://" + token
+			}
+			parsed, err := url.Parse(token)
+			if err == nil {
+				if parsed.Port() == "" && !strings.Contains(parsed.Host, ":") {
+					parsed.Host = parsed.Host + ":8096"
+				}
+				cleanURL := strings.TrimRight(parsed.String(), "/")
+				urls = append(urls, cleanURL)
+			}
+		}
+	}
+	if len(urls) == 0 {
+		return []string{"http://localhost:8096"}
+	}
+	return urls
+}
+
 // NewClient initializes a Jellyfin API Client instance
 func NewClient(serverURL string) *Client {
+	urls := ParseServerURLs(serverURL)
+	primaryURL := "http://localhost:8096"
+	if len(urls) > 0 {
+		primaryURL = urls[0]
+	}
 	return &Client{
-		ServerURL:  serverURL,
+		ServerURL:  primaryURL,
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 		imgCache:   make(map[string][]byte),
 	}
@@ -126,7 +167,7 @@ func (c *Client) FetchItems(ctx context.Context, parentID string, includeTypes s
 	return result.Items, nil
 }
 
-// BuildImageURL constructs a Jellyfin image URL for a given item and image type
+// BuildImageURL constructs a Jellyfin image URL in lightweight WebP format for a given item and image type
 func (c *Client) BuildImageURL(itemID, imageType string, width, height int) string {
 	baseURL := fmt.Sprintf("%s/Items/%s/Images/%s", c.ServerURL, itemID, imageType)
 	params := url.Values{}
@@ -136,7 +177,8 @@ func (c *Client) BuildImageURL(itemID, imageType string, width, height int) stri
 	if height > 0 {
 		params.Set("fillHeight", fmt.Sprintf("%d", height))
 	}
-	params.Set("quality", "90")
+	params.Set("quality", "80")
+	params.Set("format", "WEBP")
 	if len(params) > 0 {
 		return fmt.Sprintf("%s?%s", baseURL, params.Encode())
 	}

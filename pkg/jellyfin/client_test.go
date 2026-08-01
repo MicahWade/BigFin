@@ -14,8 +14,8 @@ func TestBuildImageURL(t *testing.T) {
 	if !strings.HasPrefix(imgURL, expectedBase) {
 		t.Errorf("expected URL to start with %s, got %s", expectedBase, imgURL)
 	}
-	if !strings.Contains(imgURL, "fillWidth=400") || !strings.Contains(imgURL, "fillHeight=600") {
-		t.Errorf("missing query parameters in image URL: %s", imgURL)
+	if !strings.Contains(imgURL, "fillWidth=400") || !strings.Contains(imgURL, "fillHeight=600") || !strings.Contains(imgURL, "format=WEBP") {
+		t.Errorf("missing expected query parameters or WEBP format in image URL: %s", imgURL)
 	}
 }
 
@@ -73,5 +73,23 @@ func TestBaseItemJSONParsing(t *testing.T) {
 	}
 	if !item.UserData.IsFavorite {
 		t.Errorf("expected IsFavorite true")
+	}
+}
+
+func TestParseServerURLs(t *testing.T) {
+	input := "192.168.1.50, 10.0.0.5:8096; http://jellyfin.local:8096"
+	urls := ParseServerURLs(input)
+
+	if len(urls) != 3 {
+		t.Fatalf("expected 3 URLs, got %d: %v", len(urls), urls)
+	}
+	if urls[0] != "http://192.168.1.50:8096" {
+		t.Errorf("expected http://192.168.1.50:8096, got %s", urls[0])
+	}
+	if urls[1] != "http://10.0.0.5:8096" {
+		t.Errorf("expected http://10.0.0.5:8096, got %s", urls[1])
+	}
+	if urls[2] != "http://jellyfin.local:8096" {
+		t.Errorf("expected http://jellyfin.local:8096, got %s", urls[2])
 	}
 }

@@ -617,7 +617,7 @@ Item {
 
     function getSubDesc(catIdx, itemIdx) {
         if (catIdx === 0) {
-            if (itemIdx === 0) return "Type any custom Jellyfin server URL (e.g. http://192.168.1.50:8096)"
+            if (itemIdx === 0) return "Type single or multiple Jellyfin server IP addresses (e.g. 192.168.1.50, 10.0.0.5)"
             if (itemIdx === 1) return "View active accounts, switch sessions, or log into another server"
             if (itemIdx === 2) return "Automatically locate Jellyfin instances on local Wi-Fi / LAN"
             if (itemIdx === 3) return "Bypass self-signed SSL certificate warnings for local servers"

@@ -373,6 +373,12 @@ Item {
         target: AppData
         ignoreUnknownSignals: true
 
+        function onConnectionFailed(msg) {
+            console.log("[MAIN] Connection failed: " + msg + ". Bringing up server connect modal popup...")
+            mainShell.showConnectingLoadingOverlay = false
+            mainShell.showStartupServerModal = true
+        }
+
         function onFavoritesListChanged() {
             if (mainShell.currentView === "favorites" && (!AppData.favoritesList || AppData.favoritesList.length === 0)) {
                 console.log("[MAIN] Favorites list is empty. Redirecting to Home...")

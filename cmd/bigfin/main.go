@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"bigfin/pkg/jellyfin"
 	"bigfin/pkg/player"
@@ -26,17 +27,21 @@ func main() {
 	client := jellyfin.NewClient(*serverURL)
 	log.Printf("[INFO] Initialized Jellyfin client for server: %s\n", *serverURL)
 
-	// Verify System Info
-	ctx := context.Background()
-	info, err := client.GetSystemInfo(ctx)
-	if err != nil {
-		log.Printf("[WARN] Public system info check: %v (Server may require direct auth)\n", err)
-	} else {
-		log.Printf("[SUCCESS] Connected to server '%s' (Version: %s)\n", info.ServerName, info.Version)
-	}
+	// Verify System Info in background so startup is instant
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		info, err := client.GetSystemInfo(ctx)
+		if err != nil {
+			log.Printf("[WARN] Public system info check: %v (Server may require direct auth)\n", err)
+		} else {
+			log.Printf("[SUCCESS] Connected to server '%s' (Version: %s)\n", info.ServerName, info.Version)
+		}
+	}()
 
 	// Authenticate if credentials supplied
 	if *username != "" {
+		ctx := context.Background()
 		log.Printf("[INFO] Authenticating user '%s'...\n", *username)
 		authResult, err := client.AuthenticateByName(ctx, *username, *password)
 		if err != nil {

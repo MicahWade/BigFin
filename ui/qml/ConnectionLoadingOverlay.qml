@@ -254,6 +254,14 @@ Item {
     }
 
     Timer {
+        id: autoModalTimer
+        interval: 600
+        running: false
+        repeat: false
+        onTriggered: loadingOverlay.openConnectModalRequested()
+    }
+
+    Timer {
         id: checkTimer
         interval: 200
         running: false

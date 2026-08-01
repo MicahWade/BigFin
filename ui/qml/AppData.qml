@@ -129,6 +129,36 @@ Item {
         connectionFailed(msg)
     }
 
+    function parseIpList(input) {
+        if (!input || input.trim() === "") return []
+        var parts = input.split(/[,;\n\r]+/)
+        var result = []
+        for (var i = 0; i < parts.length; i++) {
+            var token = parts[i].trim()
+            if (token !== "") {
+                var subTokens = token.split(/\s+/)
+                for (var j = 0; j < subTokens.length; j++) {
+                    var sub = subTokens[j].trim()
+                    if (sub !== "") {
+                        if (!sub.startsWith("http://") && !sub.startsWith("https://")) {
+                            sub = "http://" + sub
+                        }
+                        var protoIndex = sub.indexOf("://") + 3
+                        var afterProtocol = sub.substring(protoIndex)
+                        if (afterProtocol.indexOf(":") === -1 && afterProtocol.indexOf("/") === -1) {
+                            sub = sub + ":8096"
+                        }
+                        while (sub.endsWith("/")) {
+                            sub = sub.substring(0, sub.length - 1)
+                        }
+                        result.push(sub)
+                    }
+                }
+            }
+        }
+        return result
+    }
+
     function loadSavedSessions() {
         if (typeof SessionBridge !== "undefined") {
             try {
@@ -154,11 +184,22 @@ Item {
             } catch (e) {
                 console.log("[SESSIONS WARN] Failed to parse sessions JSON: " + e)
             }
+        } else if (savedSessions && savedSessions.length > 0) {
+            for (var j = 0; j < savedSessions.length; j++) {
+                var sess = savedSessions[j]
+                if (sess.id === activeSessionId || activeSessionId === "") {
+                    activeSessionId = sess.id
+                    serverName = sess.serverName
+                    authenticatedUser = sess.username
+                    loadLiveServerItems(sess.serverUrl, sess.userId, sess.accessToken)
+                    return
+                }
+            }
         }
-        setConnectionFailed("No active Jellyfin server session. Please connect to your server.")
+        setConnectionFailed("Welcome to Bigfin! Please set your Jellyfin server IP address to connect.")
     }
 
-    function saveNewSession(sUrl, sName, sVersion, uId, uName, token) {
+    function saveNewSession(sUrl, sName, sVersion, uId, uName, token, rawIps) {
         liveServerUrl = sUrl
         serverName = sName
         serverVersion = sVersion
@@ -166,10 +207,31 @@ Item {
         userId = uId
         accessToken = token
 
+        var targetIps = (rawIps && rawIps.trim() !== "") ? rawIps : sUrl
+
         if (typeof SessionBridge !== "undefined") {
-            SessionBridge.saveSession(sUrl, sName, sVersion, uId, uName, token)
+            SessionBridge.saveSession(targetIps, sName, sVersion, uId, uName, token)
+        } else {
+            var newSess = {
+                id: uId + "_" + Date.now(),
+                serverUrl: targetIps,
+                serverName: sName,
+                serverVersion: sVersion,
+                userId: uId,
+                username: uName,
+                accessToken: token
+            }
+            var updated = []
+            for (var i = 0; i < savedSessions.length; i++) {
+                if (savedSessions[i].userId !== uId || savedSessions[i].serverUrl !== targetIps) {
+                    updated.push(savedSessions[i])
+                }
+            }
+            updated.unshift(newSess)
+            savedSessions = updated
+            activeSessionId = newSess.id
         }
-        loadLiveServerItems(sUrl, uId, token)
+        loadLiveServerItems(targetIps, uId, token)
     }
 
     function switchToSession(sessId) {
@@ -221,16 +283,33 @@ Item {
 
     // Master function to trigger all specific category fetches after verifying server connection
     function loadLiveServerItems(baseUrl, uId, token) {
-        liveServerUrl = baseUrl
         userId = uId
         accessToken = token
         connectionError = ""
 
-        console.log("[JELLYFIN API] Verifying server connection & loading items for User ID: " + uId + " at " + baseUrl)
+        var candidates = parseIpList(baseUrl)
+        if (candidates.length === 0) {
+            setConnectionFailed("No valid Jellyfin server IP specified.")
+            return
+        }
+
+        tryVerifyNextIp(candidates, 0, uId, token)
+    }
+
+    function tryVerifyNextIp(candidates, index, uId, token) {
+        if (index >= candidates.length) {
+            var errStr = "Unable to connect to Jellyfin server at any configured IP address (" + candidates.join(", ") + "). Check server URL & network connection."
+            console.log("[JELLYFIN API ERROR] " + errStr)
+            setConnectionFailed(errStr)
+            return
+        }
+
+        var currentUrl = candidates[index]
+        console.log("[JELLYFIN API] Verifying candidate IP " + (index + 1) + "/" + candidates.length + ": GET " + currentUrl + "/System/Info/Public")
 
         var verifyXhr = new XMLHttpRequest()
-        verifyXhr.open("GET", baseUrl + "/System/Info/Public")
-        verifyXhr.timeout = 5000
+        verifyXhr.open("GET", currentUrl + "/System/Info/Public")
+        verifyXhr.timeout = 4000
 
         verifyXhr.onreadystatechange = function() {
             if (verifyXhr.readyState === XMLHttpRequest.DONE) {
@@ -241,7 +320,8 @@ Item {
                         serverVersion = res.Version || serverVersion || ""
                     } catch (e) {}
 
-                    console.log("[JELLYFIN API] Server verified at " + baseUrl)
+                    liveServerUrl = currentUrl
+                    console.log("[JELLYFIN API SUCCESS] Server verified at " + currentUrl)
                     isConnectedToLiveServer = true
                     isAuthenticated = true
                     connectionError = ""
@@ -255,23 +335,20 @@ Item {
                     fetchNextUpList()
                     fetchRecentlyAdded()
                 } else {
-                    var errStr = "Unable to connect to Jellyfin server at " + baseUrl + " (HTTP " + verifyXhr.status + "). Check server URL & state."
-                    console.log("[JELLYFIN API ERROR] " + errStr)
-                    setConnectionFailed(errStr)
+                    console.log("[JELLYFIN API WARN] IP candidate " + currentUrl + " returned status " + verifyXhr.status)
+                    tryVerifyNextIp(candidates, index + 1, uId, token)
                 }
             }
         }
 
         verifyXhr.ontimeout = function() {
-            var errStr = "Connection to Jellyfin server at " + baseUrl + " timed out. Ensure the server is online."
-            console.log("[JELLYFIN API ERROR] " + errStr)
-            setConnectionFailed(errStr)
+            console.log("[JELLYFIN API WARN] IP candidate " + currentUrl + " timed out")
+            tryVerifyNextIp(candidates, index + 1, uId, token)
         }
 
         verifyXhr.onerror = function() {
-            var errStr = "Network error: Could not reach Jellyfin server at " + baseUrl + ". Check IP address & port."
-            console.log("[JELLYFIN API ERROR] " + errStr)
-            setConnectionFailed(errStr)
+            console.log("[JELLYFIN API WARN] Network error connecting to IP candidate " + currentUrl)
+            tryVerifyNextIp(candidates, index + 1, uId, token)
         }
 
         verifyXhr.send()
@@ -312,19 +389,19 @@ Item {
                 displaySubtitle = item.ProductionYear ? String(item.ProductionYear) : ""
             }
 
-            // High Quality Image Hierarchy
-            var poster = liveServerUrl + "/Items/" + item.Id + "/Images/Primary?maxWidth=800&quality=90&format=JPG"
+            // Lightweight WebP Image Hierarchy with optimized quality & dimensions
+            var poster = liveServerUrl + "/Items/" + item.Id + "/Images/Primary?fillWidth=400&quality=80&format=WEBP"
             if (isEpisode && item.SeasonId) {
-                poster = liveServerUrl + "/Items/" + item.SeasonId + "/Images/Primary?maxWidth=800&quality=90&format=JPG"
+                poster = liveServerUrl + "/Items/" + item.SeasonId + "/Images/Primary?fillWidth=400&quality=80&format=WEBP"
             }
 
             var backdrop = poster
             if (item.BackdropImageTags && item.BackdropImageTags.length > 0) {
-                backdrop = liveServerUrl + "/Items/" + item.Id + "/Images/Backdrop?maxWidth=1200&quality=90&format=JPG"
+                backdrop = liveServerUrl + "/Items/" + item.Id + "/Images/Backdrop?fillWidth=960&quality=80&format=WEBP"
             } else if (item.ParentBackdropImageTags && item.ParentBackdropImageTags.length > 0 && item.ParentBackdropItemId) {
-                backdrop = liveServerUrl + "/Items/" + item.ParentBackdropItemId + "/Images/Backdrop?maxWidth=1200&quality=90&format=JPG"
+                backdrop = liveServerUrl + "/Items/" + item.ParentBackdropItemId + "/Images/Backdrop?fillWidth=960&quality=80&format=WEBP"
             } else if (item.SeriesId) {
-                backdrop = liveServerUrl + "/Items/" + item.SeriesId + "/Images/Backdrop?maxWidth=1200&quality=90&format=JPG"
+                backdrop = liveServerUrl + "/Items/" + item.SeriesId + "/Images/Backdrop?fillWidth=960&quality=80&format=WEBP"
             }
 
             if (typeof SessionBridge !== "undefined" && SessionBridge.getCachedImage) {
@@ -372,9 +449,9 @@ Item {
                     var person = item.People[p]
                     var pImg = ""
                     if (person.Id) {
-                        pImg = liveServerUrl + "/Items/" + person.Id + "/Images/Primary?maxWidth=300&quality=85"
+                        pImg = liveServerUrl + "/Items/" + person.Id + "/Images/Primary?fillWidth=200&quality=80&format=WEBP"
                     } else if (person.Name) {
-                        pImg = liveServerUrl + "/Persons/" + encodeURIComponent(person.Name) + "/Images/Primary?maxWidth=300&quality=85"
+                        pImg = liveServerUrl + "/Persons/" + encodeURIComponent(person.Name) + "/Images/Primary?fillWidth=200&quality=80&format=WEBP"
                     }
                     peopleList.push({
                         name: person.Name || "Actor",

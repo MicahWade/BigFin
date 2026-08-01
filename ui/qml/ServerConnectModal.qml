@@ -12,20 +12,22 @@ Rectangle {
 
     // Flow State: 1 = Enter Server IP, 2 = Enter User Credentials
     property int currentStep: 1
-    property string rawInputIp: ""
+    property string rawInputIp: AppData.liveServerUrl ? AppData.liveServerUrl : ""
     property string formattedUrl: ""
     property string discoveredServerName: ""
     property string discoveredVersion: ""
 
     property string inputUsername: ""
     property string inputPassword: ""
-    property string statusMessage: ""
+    property string statusMessage: AppData.connectionError ? AppData.connectionError : ""
     property bool isConnecting: false
+    property var ipCandidates: []
+    property int currentIpIndex: 0
 
     Rectangle {
         id: dialogCard
         width: Math.min(640, parent.width - 64)
-        height: currentStep === 1 ? 420 : 500
+        height: currentStep === 1 ? 440 : 500
         anchors.centerIn: parent
         radius: 16
         color: AppData.currentTheme.cardBg
@@ -84,7 +86,7 @@ Rectangle {
                 spacing: 12
 
                 Text {
-                    text: "JELLYFIN SERVER IP / HOST ADDRESS"
+                    text: "JELLYFIN SERVER IP / HOST ADDRESSES"
                     font.pixelSize: 11
                     font.bold: true
                     color: AppData.currentTheme.accent
@@ -115,7 +117,7 @@ Rectangle {
                             id: ipInput
                             Layout.fillWidth: true
                             text: serverModal.rawInputIp
-                            placeholderText: "e.g. 192.168.1.50 or http://jellyfin.local:8096"
+                            placeholderText: "e.g. 192.168.1.50, 10.0.0.5 or http://jellyfin.local:8096"
                             placeholderTextColor: "#64748b"
                             font.pixelSize: 16
                             font.bold: true
@@ -144,6 +146,13 @@ Rectangle {
                         cursorShape: Qt.IBeamCursor
                         onClicked: ipInput.forceActiveFocus()
                     }
+                }
+
+                Text {
+                    text: "💡 Supports multiple IP addresses separated by commas (e.g. 192.168.1.50, 10.0.0.5)"
+                    font.pixelSize: 12
+                    color: "#64748b"
+                    Layout.fillWidth: true
                 }
             }
 
@@ -257,7 +266,7 @@ Rectangle {
                 text: serverModal.statusMessage
                 font.pixelSize: 13
                 font.bold: true
-                color: serverModal.statusMessage.indexOf("Connected") >= 0 || serverModal.statusMessage.indexOf("Discovered") >= 0 ? "#22c55e" : (serverModal.statusMessage.indexOf("Failed") >= 0 || serverModal.statusMessage.indexOf("Unable") >= 0 ? "#ef4444" : "#38bdf8")
+                color: serverModal.statusMessage.indexOf("Connected") >= 0 || serverModal.statusMessage.indexOf("Discovered") >= 0 ? "#22c55e" : (serverModal.statusMessage.indexOf("Failed") >= 0 || serverModal.statusMessage.indexOf("Unable") >= 0 || serverModal.statusMessage.indexOf("Could not") >= 0 || serverModal.statusMessage.indexOf("Error") >= 0 ? "#ef4444" : "#38bdf8")
                 visible: serverModal.statusMessage !== ""
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -398,60 +407,92 @@ Rectangle {
         if (!str.startsWith("http://") && !str.startsWith("https://")) {
             str = "http://" + str
         }
-        var afterProtocol = str.substring(str.indexOf("://") + 3)
-        if (afterProtocol.indexOf(":") === -1) {
+        var protoIndex = str.indexOf("://") + 3
+        var afterProtocol = str.substring(protoIndex)
+        if (afterProtocol.indexOf(":") === -1 && afterProtocol.indexOf("/") === -1) {
             str = str + ":8096"
+        }
+        while (str.endsWith("/")) {
+            str = str.substring(0, str.length - 1)
         }
         return str
     }
 
+    function parseIpList(input) {
+        if (!input || input.trim() === "") return ["http://localhost:8096"]
+        var parts = input.split(/[,;\n\r]+/)
+        var result = []
+        for (var i = 0; i < parts.length; i++) {
+            var token = parts[i].trim()
+            if (token !== "") {
+                var subTokens = token.split(/\s+/)
+                for (var j = 0; j < subTokens.length; j++) {
+                    var sub = subTokens[j].trim()
+                    if (sub !== "") {
+                        result.push(sanitizeUrl(sub))
+                    }
+                }
+            }
+        }
+        return result.length > 0 ? result : ["http://localhost:8096"]
+    }
+
     function processStep1() {
         if (isConnecting) return
-        formattedUrl = sanitizeUrl(rawInputIp)
+        ipCandidates = parseIpList(rawInputIp)
+        currentIpIndex = 0
         isConnecting = true
-        statusMessage = "Connecting to " + formattedUrl + "..."
-        console.log("[JELLYFIN CONNECT] Sending GET " + formattedUrl + "/System/Info/Public...")
+        tryConnectCandidate(0)
+    }
+
+    function tryConnectCandidate(index) {
+        if (index >= ipCandidates.length) {
+            isConnecting = false
+            statusMessage = "Could not reach Jellyfin Server at any of the specified IP addresses (" + ipCandidates.join(", ") + "). Check IP address and network connection."
+            return
+        }
+
+        currentIpIndex = index
+        var candidateUrl = ipCandidates[index]
+        formattedUrl = candidateUrl
+        statusMessage = "Testing connection to " + candidateUrl + (ipCandidates.length > 1 ? " (" + (index + 1) + " of " + ipCandidates.length + " IPs)..." : "...")
+        console.log("[JELLYFIN CONNECT] Testing candidate IP " + (index + 1) + "/" + ipCandidates.length + ": GET " + candidateUrl + "/System/Info/Public...")
 
         var xhr = new XMLHttpRequest()
-        xhr.open("GET", formattedUrl + "/System/Info/Public")
-        xhr.timeout = 5000
+        xhr.open("GET", candidateUrl + "/System/Info/Public")
+        xhr.timeout = 4000
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
-                isConnecting = false
                 if (xhr.status === 200) {
                     try {
                         var res = JSON.parse(xhr.responseText)
                         discoveredServerName = res.ServerName || "Jellyfin Server"
                         discoveredVersion = res.Version || ""
-                        console.log("[JELLYFIN CONNECT] Discovered Server: " + discoveredServerName + " (v" + discoveredVersion + ")")
-                        statusMessage = "Discovered " + discoveredServerName + "! Enter account credentials."
+                        isConnecting = false
+                        console.log("[JELLYFIN CONNECT SUCCESS] Connected to server: " + discoveredServerName + " (v" + discoveredVersion + ") at " + candidateUrl)
+                        statusMessage = "Connected to " + discoveredServerName + "! Enter account credentials."
                         currentStep = 2
                         Qt.callLater(function() { userInput.forceActiveFocus() })
                     } catch (e) {
-                        console.log("[JELLYFIN CONNECT ERROR] Invalid JSON from server: " + e)
-                        statusMessage = "Connection Error: Invalid JSON response from " + formattedUrl
+                        console.log("[JELLYFIN CONNECT ERROR] Invalid JSON from candidate " + candidateUrl + ": " + e)
+                        tryConnectCandidate(index + 1)
                     }
-                } else if (xhr.status > 0) {
-                    console.log("[JELLYFIN CONNECT ERROR] Public info returned HTTP status " + xhr.status)
-                    statusMessage = "Unable to connect to Jellyfin Server at " + formattedUrl + " (HTTP " + xhr.status + ")."
                 } else {
-                    console.log("[JELLYFIN CONNECT ERROR] Server connection failed.")
-                    statusMessage = "Could not reach Jellyfin Server at " + formattedUrl + ". Check IP address and port."
+                    console.log("[JELLYFIN CONNECT ERROR] Candidate " + candidateUrl + " returned status " + xhr.status)
+                    tryConnectCandidate(index + 1)
                 }
             }
         }
 
         xhr.ontimeout = function() {
-            isConnecting = false
-            console.log("[JELLYFIN CONNECT ERROR] Connection timed out!")
-            statusMessage = "Unable to connect to " + formattedUrl + ". Request timed out. Check IP address & port."
+            console.log("[JELLYFIN CONNECT ERROR] Candidate " + candidateUrl + " timed out!")
+            tryConnectCandidate(index + 1)
         }
 
         xhr.onerror = function() {
-            isConnecting = false
-            console.log("[JELLYFIN CONNECT ERROR] Network error connecting to host!")
-            statusMessage = "Unable to reach Jellyfin server at " + formattedUrl + ". Check host address and network connection."
+            console.log("[JELLYFIN CONNECT ERROR] Network error connecting to candidate " + candidateUrl)
+            tryConnectCandidate(index + 1)
         }
 
         xhr.send()
@@ -493,7 +534,7 @@ Rectangle {
                         console.log("[JELLYFIN AUTH SUCCESS] Granted AccessToken for User: " + uName + " (ID: " + uId + ")")
                         statusMessage = "Authentication Successful! Loading live media items..."
 
-                        AppData.saveNewSession(formattedUrl, discoveredServerName, discoveredVersion, uId, uName, token)
+                        AppData.saveNewSession(formattedUrl, discoveredServerName, discoveredVersion, uId, uName, token, rawInputIp)
                         serverConnected(formattedUrl, discoveredServerName, uName, token)
                     } catch (e) {
                         console.log("[JELLYFIN AUTH ERROR] Failed to parse auth response: " + e)
@@ -524,3 +565,4 @@ Rectangle {
         xhr.send(payload)
     }
 }
+

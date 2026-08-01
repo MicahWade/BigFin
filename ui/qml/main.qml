@@ -6,7 +6,7 @@ import org.kde.kirigami 2.20 as Kirigami
 
 ApplicationWindow {
     id: rootWindow
-    title: "Bigfin - Standalone 10-Foot Kirigami TV Client"
+    title: "Bigfin"
     width: 1920
     height: 1080
     visible: true
