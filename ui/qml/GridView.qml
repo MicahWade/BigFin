@@ -170,14 +170,16 @@ Item {
                     Keys.onSpacePressed: gridView.itemSelected(modelData)
 
                     Keys.onLeftPressed: function(event) {
-                        if (index % 8 === 0) {
+                        var columns = Math.max(1, Math.floor(mediaGridView.width / mediaGridView.cellWidth))
+                        if (index % columns === 0) {
                             gridView.requestSidebarFocus()
                             event.accepted = true
                         }
                     }
 
                     Keys.onUpPressed: function(event) {
-                        if (index < 8) {
+                        var columns = Math.max(1, Math.floor(mediaGridView.width / mediaGridView.cellWidth))
+                        if (index < columns) {
                             event.accepted = true
                         }
                     }

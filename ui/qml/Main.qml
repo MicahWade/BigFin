@@ -314,7 +314,7 @@ Item {
     }
 
     // STARTUP JELLYFIN SERVER CONNECTION LOADING SCREEN
-    property bool showConnectingLoadingOverlay: true
+    property bool showConnectingLoadingOverlay: false
 
     Loader {
         id: loadingOverlayLoader
@@ -506,8 +506,12 @@ Item {
     function moveFocusToView() {
         if (viewLoader.item) {
             viewLoader.item.forceActiveFocus()
-            if (viewLoader.item.defaultFocusItem) {
-                viewLoader.item.defaultFocusItem.forceActiveFocus()
+            var focusItem = viewLoader.item.defaultFocusItem
+            if (focusItem) {
+                focusItem.forceActiveFocus()
+                if (focusItem.currentItem) {
+                    focusItem.currentItem.forceActiveFocus()
+                }
             }
         }
     }
@@ -521,6 +525,18 @@ Item {
             } else {
                 goBack()
                 event.accepted = true
+            }
+        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            // Safety Focus Recovery Net: If an arrow key reaches mainShell, recover active focus
+            if (mainShell.showSessionSwitchModal && sessionModalLoader.item) {
+                sessionModalLoader.item.forceActiveFocus()
+            } else if (mainShell.showStartupServerModal && serverModalLoader.item) {
+                serverModalLoader.item.forceActiveFocus()
+            } else if (sidebarContainer.isSidebarFocused) {
+                sidebarListView.forceActiveFocus()
+                if (sidebarListView.currentItem) sidebarListView.currentItem.forceActiveFocus()
+            } else {
+                moveFocusToView()
             }
         }
     }

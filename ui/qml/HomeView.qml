@@ -10,7 +10,36 @@ Item {
     signal detailsRequested(var item)
     signal requestSidebarFocus()
 
-    property alias defaultFocusItem: continueWatchingList
+    property var defaultFocusItem: (AppData.continueWatching.length > 0 ? continueWatchingList : (moviesList.count > 0 ? moviesList : (musicList.count > 0 ? musicList : tvList)))
+
+    function navigateDownFrom(currentSection) {
+        if (currentSection === "cw") {
+            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
+            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
+            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+        } else if (currentSection === "movies") {
+            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
+            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+        } else if (currentSection === "music") {
+            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+        }
+        return false
+    }
+
+    function navigateUpFrom(currentSection) {
+        if (currentSection === "movies") {
+            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+        } else if (currentSection === "music") {
+            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
+            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+        } else if (currentSection === "tv") {
+            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
+            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
+            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+        }
+        homeView.requestSidebarFocus()
+        return true
+    }
 
     Flickable {
         id: mainFlickable
@@ -277,8 +306,7 @@ Item {
                             }
 
                             Keys.onDownPressed: function(event) {
-                                moviesList.forceActiveFocus()
-                                if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus()
+                                navigateDownFrom("cw")
                                 event.accepted = true
                             }
 
@@ -442,18 +470,12 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                if (continueWatchingList.visible) {
-                                    continueWatchingList.forceActiveFocus()
-                                    if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus()
-                                } else {
-                                    homeView.requestSidebarFocus()
-                                }
+                                navigateUpFrom("movies")
                                 event.accepted = true
                             }
 
                             Keys.onDownPressed: function(event) {
-                                musicList.forceActiveFocus()
-                                if (musicList.currentItem) musicList.currentItem.forceActiveFocus()
+                                navigateDownFrom("movies")
                                 event.accepted = true
                             }
 
@@ -601,14 +623,12 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                moviesList.forceActiveFocus()
-                                if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus()
+                                navigateUpFrom("music")
                                 event.accepted = true
                             }
 
                             Keys.onDownPressed: function(event) {
-                                tvList.forceActiveFocus()
-                                if (tvList.currentItem) tvList.currentItem.forceActiveFocus()
+                                navigateDownFrom("music")
                                 event.accepted = true
                             }
 
@@ -754,8 +774,7 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                musicList.forceActiveFocus()
-                                if (musicList.currentItem) musicList.currentItem.forceActiveFocus()
+                                navigateUpFrom("tv")
                                 event.accepted = true
                             }
 

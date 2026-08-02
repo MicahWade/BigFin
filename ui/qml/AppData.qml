@@ -1,9 +1,15 @@
 pragma Singleton
 import QtQuick 2.15
 import QtQml 2.15
-
 Item {
     id: appData
+
+    QtObject {
+        id: sessionSettings
+        property string category: "BigfinSessions"
+        property string activeSessionId: ""
+        property string savedSessionsJson: ""
+    }
 
     // Active Theme State Singleton
     property int activeThemeIndex: 0
@@ -159,30 +165,96 @@ Item {
         return result
     }
 
+    function syncSettingsToDisk() {
+        try {
+            sessionSettings.activeSessionId = activeSessionId
+            sessionSettings.savedSessionsJson = JSON.stringify(savedSessions)
+        } catch (e) {
+            console.log("[SESSIONS WARN] Failed to sync settings to disk: " + e)
+        }
+    }
+
+    function readConfigFileDirectly() {
+        var base = Qt.resolvedUrl(".").toString()
+        var homePath = ""
+        var idx = base.indexOf("/home/")
+        if (idx !== -1) {
+            var rest = base.substring(idx + 6)
+            var slashIdx = rest.indexOf("/")
+            if (slashIdx !== -1) {
+                var username = rest.substring(0, slashIdx)
+                homePath = "/home/" + username
+            }
+        }
+        
+        var candidates = []
+        if (homePath !== "") {
+            candidates.push("file://" + homePath + "/.config/bigfin/sessions.json")
+        }
+        
+        for (var c = 0; c < candidates.length; c++) {
+            try {
+                var xhr = new XMLHttpRequest()
+                xhr.open("GET", candidates[c], false)
+                xhr.send()
+                if ((xhr.status === 200 || xhr.status === 0) && xhr.responseText && xhr.responseText.trim() !== "") {
+                    var data = JSON.parse(xhr.responseText)
+                    if (data && data.sessions && data.sessions.length > 0) {
+                        console.log("[SESSIONS] Read session config directly from " + candidates[c])
+                        return data
+                    }
+                }
+            } catch(e) {
+                console.log("[SESSIONS] Read config candidate failed: " + e)
+            }
+        }
+        return null
+    }
+
     function loadSavedSessions() {
+        var loadedData = null
+
         if (typeof SessionBridge !== "undefined") {
             try {
                 var jsonStr = SessionBridge.loadSessionsJson()
-                var data = JSON.parse(jsonStr)
-                savedSessions = data.sessions || []
-                activeSessionId = data.activeSessionId || ""
-                console.log("[SESSIONS] Loaded " + savedSessions.length + " sessions. Active ID: " + activeSessionId)
+                loadedData = JSON.parse(jsonStr)
+            } catch (e) {
+                console.log("[SESSIONS WARN] SessionBridge parse fail: " + e)
+            }
+        }
 
-                if (activeSessionId !== "" && savedSessions.length > 0) {
-                    for (var i = 0; i < savedSessions.length; i++) {
-                        var s = savedSessions[i]
-                        if (s.id === activeSessionId) {
-                            console.log("[SESSIONS] Auto-logging into saved session for " + s.username + " at " + s.serverUrl)
-                            serverName = s.serverName
-                            serverVersion = s.serverVersion
-                            authenticatedUser = s.username
-                            loadLiveServerItems(s.serverUrl, s.userId, s.accessToken)
-                            return
-                        }
-                    }
+        if (!loadedData) {
+            loadedData = readConfigFileDirectly()
+        }
+
+        if (!loadedData && sessionSettings.savedSessionsJson !== "") {
+            try {
+                loadedData = {
+                    activeSessionId: sessionSettings.activeSessionId,
+                    sessions: JSON.parse(sessionSettings.savedSessionsJson)
                 }
             } catch (e) {
-                console.log("[SESSIONS WARN] Failed to parse sessions JSON: " + e)
+                console.log("[SESSIONS WARN] Qt Settings parse fail: " + e)
+            }
+        }
+
+        if (loadedData && loadedData.sessions && loadedData.sessions.length > 0) {
+            savedSessions = loadedData.sessions
+            activeSessionId = loadedData.activeSessionId || savedSessions[0].id
+            console.log("[SESSIONS] Loaded " + savedSessions.length + " saved sessions. Active ID: " + activeSessionId)
+
+            for (var i = 0; i < savedSessions.length; i++) {
+                var s = savedSessions[i]
+                if (s.id === activeSessionId || activeSessionId === "" || savedSessions.length === 1) {
+                    activeSessionId = s.id
+                    serverName = s.serverName || "Jellyfin"
+                    serverVersion = s.serverVersion || ""
+                    authenticatedUser = s.username || "User"
+                    console.log("[SESSIONS] Auto-logging into saved session for " + s.username + " at " + s.serverUrl)
+                    syncSettingsToDisk()
+                    loadLiveServerItems(s.serverUrl, s.userId, s.accessToken)
+                    return
+                }
             }
         } else if (savedSessions && savedSessions.length > 0) {
             for (var j = 0; j < savedSessions.length; j++) {
@@ -191,6 +263,7 @@ Item {
                     activeSessionId = sess.id
                     serverName = sess.serverName
                     authenticatedUser = sess.username
+                    syncSettingsToDisk()
                     loadLiveServerItems(sess.serverUrl, sess.userId, sess.accessToken)
                     return
                 }
@@ -231,6 +304,7 @@ Item {
             savedSessions = updated
             activeSessionId = newSess.id
         }
+        syncSettingsToDisk()
         loadLiveServerItems(targetIps, uId, token)
     }
 
@@ -239,17 +313,18 @@ Item {
             var success = SessionBridge.switchSession(sessId)
             if (success) {
                 loadSavedSessions()
+                return
             }
-        } else {
-            for (var i = 0; i < savedSessions.length; i++) {
-                if (savedSessions[i].id === sessId) {
-                    var s = savedSessions[i]
-                    activeSessionId = sessId
-                    serverName = s.serverName
-                    authenticatedUser = s.username
-                    loadLiveServerItems(s.serverUrl, s.userId, s.accessToken)
-                    break
-                }
+        }
+        for (var i = 0; i < savedSessions.length; i++) {
+            if (savedSessions[i].id === sessId) {
+                var s = savedSessions[i]
+                activeSessionId = sessId
+                serverName = s.serverName
+                authenticatedUser = s.username
+                syncSettingsToDisk()
+                loadLiveServerItems(s.serverUrl, s.userId, s.accessToken)
+                break
             }
         }
     }
@@ -258,19 +333,23 @@ Item {
         if (typeof SessionBridge !== "undefined") {
             SessionBridge.deleteSession(sessId)
             loadSavedSessions()
-        } else {
-            var filtered = []
-            for (var i = 0; i < savedSessions.length; i++) {
-                if (savedSessions[i].id !== sessId) filtered.push(savedSessions[i])
-            }
-            savedSessions = filtered
-            if (activeSessionId === sessId) {
-                activeSessionId = filtered.length > 0 ? filtered[0].id : ""
-                if (activeSessionId === "") {
-                    setConnectionFailed("Session deleted. Please connect to a Jellyfin server.")
-                }
+            return
+        }
+        var filtered = []
+        for (var i = 0; i < savedSessions.length; i++) {
+            if (savedSessions[i].id !== sessId) filtered.push(savedSessions[i])
+        }
+        savedSessions = filtered
+        if (activeSessionId === sessId) {
+            activeSessionId = filtered.length > 0 ? filtered[0].id : ""
+            if (activeSessionId === "") {
+                syncSettingsToDisk()
+                setConnectionFailed("Session deleted. Please connect to a Jellyfin server.")
+                return
             }
         }
+        syncSettingsToDisk()
+        loadSavedSessions()
     }
 
     function logoutCurrentSession() {
@@ -278,6 +357,7 @@ Item {
             SessionBridge.logoutActiveSession()
         }
         activeSessionId = ""
+        syncSettingsToDisk()
         setConnectionFailed("Logged out. Please sign in to your Jellyfin server.")
     }
 

@@ -358,6 +358,14 @@ Rectangle {
                     Keys.onReturnPressed: serverModal.currentStep = 1
                     Keys.onEnterPressed: serverModal.currentStep = 1
                     Keys.onSelectPressed: serverModal.currentStep = 1
+                    Keys.onUpPressed: function(event) {
+                        passInput.forceActiveFocus()
+                        event.accepted = true
+                    }
+                    Keys.onRightPressed: function(event) {
+                        step2ConnectBtn.forceActiveFocus()
+                        event.accepted = true
+                    }
                 }
 
                 Rectangle {
@@ -394,6 +402,10 @@ Rectangle {
                     Keys.onSpacePressed: processStep2()
                     Keys.onUpPressed: function(event) {
                         passInput.forceActiveFocus()
+                        event.accepted = true
+                    }
+                    Keys.onLeftPressed: function(event) {
+                        backBtn.forceActiveFocus()
                         event.accepted = true
                     }
                 }

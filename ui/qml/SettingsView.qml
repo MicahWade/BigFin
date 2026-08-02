@@ -316,7 +316,6 @@ Item {
                             backBtn.forceActiveFocus()
                         } else {
                             masterListView.decrementCurrentIndex()
-                            if (masterListView.currentItem) masterListView.currentItem.forceActiveFocus()
                         }
                         event.accepted = true
                     }
@@ -324,7 +323,6 @@ Item {
                     Keys.onDownPressed: function(event) {
                         if (index < masterListView.count - 1) {
                             masterListView.incrementCurrentIndex()
-                            if (masterListView.currentItem) masterListView.currentItem.forceActiveFocus()
                         }
                         event.accepted = true
                     }
@@ -512,7 +510,6 @@ Item {
                             backBtn.forceActiveFocus()
                         } else {
                             detailListView.decrementCurrentIndex()
-                            if (detailListView.currentItem) detailListView.currentItem.forceActiveFocus()
                         }
                         event.accepted = true
                     }
@@ -520,7 +517,6 @@ Item {
                     Keys.onDownPressed: function(event) {
                         if (index < detailListView.count - 1) {
                             detailListView.incrementCurrentIndex()
-                            if (detailListView.currentItem) detailListView.currentItem.forceActiveFocus()
                         }
                         event.accepted = true
                     }

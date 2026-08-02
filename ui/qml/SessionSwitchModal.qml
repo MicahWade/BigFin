@@ -285,7 +285,6 @@ Rectangle {
                                 addAccountBtn.forceActiveFocus()
                             } else {
                                 sessionsListView.decrementCurrentIndex()
-                                if (sessionsListView.currentItem) sessionsListView.currentItem.forceActiveFocus()
                             }
                             event.accepted = true
                         }
@@ -293,7 +292,6 @@ Rectangle {
                         Keys.onDownPressed: function(event) {
                             if (index < sessionsListView.count - 1) {
                                 sessionsListView.incrementCurrentIndex()
-                                if (sessionsListView.currentItem) sessionsListView.currentItem.forceActiveFocus()
                             }
                             event.accepted = true
                         }

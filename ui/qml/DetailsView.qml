@@ -55,6 +55,25 @@ Item {
     property var nextUpEpisode: null
     property var activeSeason: null
 
+    function navigateDownFromHero() {
+        if (seasonsListView.visible && seasonsList.length > 0) {
+            seasonsListView.forceActiveFocus()
+            if (seasonsListView.currentItem) seasonsListView.currentItem.forceActiveFocus()
+            return true
+        }
+        if (episodesListView.visible && episodesList.length > 0) {
+            episodesListView.forceActiveFocus()
+            if (episodesListView.currentItem) episodesListView.currentItem.forceActiveFocus()
+            return true
+        }
+        if (castListView.visible && castListView.count > 0) {
+            castListView.forceActiveFocus()
+            if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+            return true
+        }
+        return false
+    }
+
     onItemChanged: loadData()
     onVisibleChanged: { if (visible) loadData() }
 
@@ -312,6 +331,7 @@ Item {
                             Keys.onReturnPressed: detailsView.playRequested(detailsView.item)
                             Keys.onSpacePressed: detailsView.playRequested(detailsView.item)
                             Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) { detailsView.requestSidebarFocus(); event.accepted = true }
                             Keys.onRightPressed: function(event) {
                                 if (nextUpBtn.visible) nextUpBtn.forceActiveFocus()
@@ -348,6 +368,8 @@ Item {
                             MouseArea { onClicked: detailsView.playRequested(detailsView.nextUpEpisode) }
                             Keys.onReturnPressed: detailsView.playRequested(detailsView.nextUpEpisode)
                             Keys.onSpacePressed: detailsView.playRequested(detailsView.nextUpEpisode)
+                            Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) { playBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onRightPressed: function(event) { playedBtn.forceActiveFocus(); event.accepted = true }
                         }
@@ -379,6 +401,8 @@ Item {
                             }
                             Keys.onReturnPressed: playedBtn.isPlayed = !playedBtn.isPlayed
                             Keys.onSpacePressed: playedBtn.isPlayed = !playedBtn.isPlayed
+                            Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) {
                                 if (nextUpBtn.visible) nextUpBtn.forceActiveFocus()
                                 else playBtn.forceActiveFocus()
@@ -426,6 +450,8 @@ Item {
                                     AppData.toggleFavorite(detailsView.item.id, favBtn.isFav)
                                 }
                             }
+                            Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) { playedBtn.forceActiveFocus(); event.accepted = true }
                         }
                     }
@@ -716,8 +742,20 @@ Item {
                         Keys.onReturnPressed: detailsView.loadSeasonEpisodes(modelData)
                         Keys.onSpacePressed: detailsView.loadSeasonEpisodes(modelData)
                         Keys.onUpPressed: function(event) { playBtn.forceActiveFocus(); event.accepted = true }
+                        Keys.onLeftPressed: function(event) {
+                            if (index === 0) {
+                                detailsView.requestSidebarFocus()
+                                event.accepted = true
+                            }
+                        }
                         Keys.onDownPressed: function(event) {
-                            if (episodesListView.count > 0) episodesListView.forceActiveFocus()
+                            if (episodesListView.visible && detailsView.episodesList.length > 0) {
+                                episodesListView.forceActiveFocus()
+                                if (episodesListView.currentItem) episodesListView.currentItem.forceActiveFocus()
+                            } else if (castListView.visible && castListView.count > 0) {
+                                castListView.forceActiveFocus()
+                                if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+                            }
                             event.accepted = true
                         }
                     }
@@ -859,8 +897,23 @@ Item {
                             Keys.onReturnPressed: detailsView.item = modelData
                             Keys.onSpacePressed: detailsView.playRequested(modelData)
                             Keys.onUpPressed: function(event) {
-                                if (seasonsListView.visible && seasonsListView.count > 0) seasonsListView.forceActiveFocus()
-                                else playBtn.forceActiveFocus()
+                                if (seasonsListView.visible && detailsView.seasonsList.length > 0) {
+                                    seasonsListView.forceActiveFocus()
+                                    if (seasonsListView.currentItem) seasonsListView.currentItem.forceActiveFocus()
+                                } else playBtn.forceActiveFocus()
+                                event.accepted = true
+                            }
+                            Keys.onLeftPressed: function(event) {
+                                if (index === 0) {
+                                    detailsView.requestSidebarFocus()
+                                    event.accepted = true
+                                }
+                            }
+                            Keys.onDownPressed: function(event) {
+                                if (castListView.visible && castListView.count > 0) {
+                                    castListView.forceActiveFocus()
+                                    if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+                                }
                                 event.accepted = true
                             }
                         }
@@ -896,47 +949,87 @@ Item {
                     model: detailsView.item ? detailsView.item.people : []
 
                     delegate: Item {
+                        id: castDelegateItem
                         width: 110
                         height: 170
+                        focus: true
 
-                        ColumnLayout {
+                        onActiveFocusChanged: {
+                            if (activeFocus) castCard.forceActiveFocus()
+                        }
+
+                        Rectangle {
+                            id: castCard
                             anchors.fill: parent
-                            spacing: 8
+                            radius: 10
+                            color: activeFocus ? AppData.currentTheme.focusCard : "transparent"
+                            border.color: activeFocus ? AppData.currentTheme.accent : "transparent"
+                            border.width: activeFocus ? 2 : 0
+                            focus: true
 
-                            Rectangle {
-                                Layout.preferredWidth: 100
-                                Layout.preferredHeight: 110
-                                radius: 10
-                                color: "#0f172a"
-                                border.color: "#334155"
-                                border.width: 1
-                                clip: true
-                                Layout.alignment: Qt.AlignHCenter
+                            onActiveFocusChanged: {
+                                if (activeFocus) castListView.currentIndex = index
+                            }
 
-                                Image {
-                                    anchors.fill: parent
-                                    source: modelData.imageUrl || ""
-                                    fillMode: Image.PreserveAspectCrop
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                Rectangle {
+                                    Layout.preferredWidth: 100
+                                    Layout.preferredHeight: 110
+                                    radius: 10
+                                    color: "#0f172a"
+                                    border.color: "#334155"
+                                    border.width: 1
+                                    clip: true
+                                    Layout.alignment: Qt.AlignHCenter
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: modelData.imageUrl || ""
+                                        fillMode: Image.PreserveAspectCrop
+                                    }
+                                }
+
+                                Text {
+                                    text: modelData.name || "Actor"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                    color: "#ffffff"
+                                    elide: Text.ElideRight
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: modelData.role || "Cast"
+                                    font.pixelSize: 10
+                                    color: "#94a3b8"
+                                    elide: Text.ElideRight
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.fillWidth: true
                                 }
                             }
 
-                            Text {
-                                text: modelData.name || "Actor"
-                                font.pixelSize: 12
-                                font.bold: true
-                                color: "#ffffff"
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                                Layout.fillWidth: true
+                            Keys.onUpPressed: function(event) {
+                                if (episodesListView.visible && detailsView.episodesList.length > 0) {
+                                    episodesListView.forceActiveFocus()
+                                    if (episodesListView.currentItem) episodesListView.currentItem.forceActiveFocus()
+                                } else if (seasonsListView.visible && detailsView.seasonsList.length > 0) {
+                                    seasonsListView.forceActiveFocus()
+                                    if (seasonsListView.currentItem) seasonsListView.currentItem.forceActiveFocus()
+                                } else {
+                                    playBtn.forceActiveFocus()
+                                }
+                                event.accepted = true
                             }
 
-                            Text {
-                                text: modelData.role || "Cast"
-                                font.pixelSize: 10
-                                color: "#94a3b8"
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                                Layout.fillWidth: true
+                            Keys.onLeftPressed: function(event) {
+                                if (index === 0) {
+                                    detailsView.requestSidebarFocus()
+                                    event.accepted = true
+                                }
                             }
                         }
                     }

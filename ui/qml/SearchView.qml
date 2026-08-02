@@ -60,6 +60,7 @@ Item {
                     Keys.onDownPressed: function(event) {
                         if (searchResultsGrid.count > 0) {
                             searchResultsGrid.forceActiveFocus()
+                            if (searchResultsGrid.currentItem) searchResultsGrid.currentItem.forceActiveFocus()
                         }
                         event.accepted = true
                     }
@@ -196,14 +197,16 @@ Item {
                     Keys.onSpacePressed: searchView.itemSelected(modelData)
 
                     Keys.onUpPressed: function(event) {
-                        if (index < 8) {
+                        var columns = Math.max(1, Math.floor(searchResultsGrid.width / searchResultsGrid.cellWidth))
+                        if (index < columns) {
                             searchInput.forceActiveFocus()
                             event.accepted = true
                         }
                     }
 
                     Keys.onLeftPressed: function(event) {
-                        if (index % 8 === 0) {
+                        var columns = Math.max(1, Math.floor(searchResultsGrid.width / searchResultsGrid.cellWidth))
+                        if (index % columns === 0) {
                             searchView.requestSidebarFocus()
                             event.accepted = true
                         }

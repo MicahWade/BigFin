@@ -830,6 +830,10 @@ Item {
         } else if (event.key === Qt.Key_D) {
             controlsContainer.visibleControls = !controlsContainer.visibleControls
             event.accepted = true
+        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            if (!playPauseBtn.activeFocus && !rewindBtn.activeFocus && !forwardBtn.activeFocus && !seekTrack.activeFocus && !playerBackBtn.activeFocus && !audioBtn.activeFocus && !subBtn.activeFocus && !windowMinimizeBtn.activeFocus && !windowToggleFSBtn.activeFocus) {
+                playPauseBtn.forceActiveFocus()
+            }
         }
     }
 }
