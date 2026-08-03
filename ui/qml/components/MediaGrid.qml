@@ -83,6 +83,7 @@ Kirigami.ScrollablePage {
             itemId: "9"
             title: "Breaking Bad"
             mediaType: "Series"
+            seasonsEpisodesStr: "5 Seasons • 62 Episodes"
             year: "2008"
             rating: "9.5"
             overview: "A chemistry teacher diagnosed with lung cancer turns to manufacturing methamphetamine with a former student."
@@ -92,6 +93,7 @@ Kirigami.ScrollablePage {
             itemId: "10"
             title: "The Mandalorian"
             mediaType: "Series"
+            seasonsEpisodesStr: "3 Seasons • 24 Episodes"
             year: "2019"
             rating: "8.6"
             overview: "The travels of a lone bounty hunter in the outer reaches of the galaxy."
@@ -258,10 +260,12 @@ Kirigami.ScrollablePage {
                                     }
                                     Text { text: "•"; font.pixelSize: 12; color: "#8a90a6" }
                                     Text {
-                                        text: model.mediaType
+                                        text: model.seasonsEpisodesStr ? model.seasonsEpisodesStr : model.mediaType
                                         font.pixelSize: 12
                                         color: "#00a4dc"
                                         font.bold: true
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
                                     }
                                 }
                             }

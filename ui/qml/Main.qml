@@ -254,8 +254,15 @@ Item {
                 source: "HomeView.qml"
 
                 onLoaded: {
-                    if (item && item.defaultFocusItem && !sidebarContainer.isSidebarFocused && !mainShell.showStartupServerModal) {
-                        item.defaultFocusItem.forceActiveFocus()
+                    if (item) {
+                        if (mainShell.currentView === "details") {
+                            item.item = mainShell.selectedMediaItem
+                        } else if (mainShell.currentView === "movies" || mainShell.currentView === "tvshows" || mainShell.currentView === "music" || mainShell.currentView === "favorites") {
+                            item.categoryFilter = mainShell.currentView
+                        }
+                        if (item.defaultFocusItem && !sidebarContainer.isSidebarFocused && !mainShell.showStartupServerModal) {
+                            item.defaultFocusItem.forceActiveFocus()
+                        }
                     }
                 }
             }
@@ -441,6 +448,10 @@ Item {
             mainShell.viewHistoryStack = stack
         }
 
+        if (extraData) {
+            mainShell.selectedMediaItem = extraData
+        }
+
         mainShell.currentView = viewId
         if (viewId === "home") {
             viewLoader.source = "HomeView.qml"
@@ -459,11 +470,11 @@ Item {
         } else if (viewId === "details") {
             viewLoader.source = "DetailsView.qml"
             if (viewLoader.item) {
-                viewLoader.item.item = extraData ? extraData : mainShell.selectedMediaItem
+                viewLoader.item.item = mainShell.selectedMediaItem
             }
         } else if (viewId === "player") {
             if (playerLoader.item) {
-                playerLoader.item.item = extraData ? extraData : mainShell.selectedMediaItem
+                playerLoader.item.item = mainShell.selectedMediaItem
             }
         }
     }

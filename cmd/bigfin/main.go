@@ -108,7 +108,154 @@ func main() {
 	var binPath string
 	var args []string
 
-	if qmlBin, err := exec.LookPath("qmlscene"); err == nil {
+	if pyBin, err := exec.LookPath("python3"); err == nil && isNativePyQtAvailable(pyBin) {
+		log.Printf("[INFO] Launching QML UI via native Python PyQt6 engine with SessionBridge: %s\n", pyBin)
+		binPath = pyBin
+		args = []string{pyBin, "-c", `import sys, os, json, time
+from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtQml import QQmlApplicationEngine
+from PyQt6.QtCore import QObject, pyqtSlot, qInstallMessageHandler, QtMsgType
+
+log_file_path = "/tmp/bigfin_launch.log"
+
+def qt_message_handler(mode, context, message):
+    prefix = "[QML LOG]"
+    if mode == QtMsgType.QtWarningMsg:
+        prefix = "[QML WARN]"
+    elif mode == QtMsgType.QtCriticalMsg or mode == QtMsgType.QtFatalMsg:
+        prefix = "[QML ERROR]"
+    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    line = f"{ts} {prefix} {message}\n"
+    sys.stderr.write(line)
+    sys.stderr.flush()
+    try:
+        with open(log_file_path, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+
+qInstallMessageHandler(qt_message_handler)
+
+config_dir = os.path.expanduser("~/.config/bigfin")
+config_file = os.path.join(config_dir, "sessions.json")
+
+class SessionBridge(QObject):
+    @pyqtSlot(result=str)
+    def loadSessionsJson(self):
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, "r", encoding="utf-8") as f:
+                    return f.read()
+        except Exception as e:
+            print("[SESSION] Load error:", e)
+        return '{"activeSessionId":"","sessions":[]}'
+
+    @pyqtSlot(str, str, str, str, str, str)
+    def saveSession(self, serverUrl, serverName, serverVersion, userId, username, accessToken):
+        try:
+            os.makedirs(config_dir, exist_ok=True)
+            data = {"activeSessionId": "", "sessions": []}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    pass
+            sess_id = f"{userId}_{int(time.time()*1000)}"
+            sessions = data.get("sessions", [])
+            updated = [s for s in sessions if s.get("userId") != userId or s.get("serverUrl") != serverUrl]
+            new_sess = {
+                "id": sess_id,
+                "serverUrl": serverUrl,
+                "serverName": serverName,
+                "serverVersion": serverVersion,
+                "userId": userId,
+                "username": username,
+                "accessToken": accessToken,
+                "lastUsed": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            }
+            updated.insert(0, new_sess)
+            data["sessions"] = updated
+            data["activeSessionId"] = sess_id
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            print(f"[SESSION] Successfully saved session for {username} at {serverUrl}")
+        except Exception as e:
+            print("[SESSION] Save error:", e)
+
+    @pyqtSlot(str, result=bool)
+    def switchSession(self, sessId):
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["activeSessionId"] = sessId
+                with open(config_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                return True
+        except Exception as e:
+            print("[SESSION] Switch error:", e)
+        return False
+
+    @pyqtSlot(str)
+    def deleteSession(self, sessId):
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                sessions = [s for s in data.get("sessions", []) if s.get("id") != sessId]
+                data["sessions"] = sessions
+                if data.get("activeSessionId") == sessId:
+                    data["activeSessionId"] = sessions[0]["id"] if sessions else ""
+                with open(config_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+        except Exception as e:
+            print("[SESSION] Delete error:", e)
+
+    @pyqtSlot()
+    def logoutActiveSession(self):
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["activeSessionId"] = ""
+                with open(config_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+        except Exception as e:
+            print("[SESSION] Logout error:", e)
+
+    @pyqtSlot(str, result=str)
+    def getCachedImage(self, url):
+        return url
+
+    @pyqtSlot(str, str, str, int)
+    def reportPlaybackStart(self, serverUrl, token, itemId, positionSec):
+        pass
+
+    @pyqtSlot(str, str, str, int, bool, str)
+    def reportPlaybackProgress(self, serverUrl, token, itemId, positionSec, isPaused, eventName):
+        pass
+
+    @pyqtSlot(str, str, str, int)
+    def reportPlaybackStopped(self, serverUrl, token, itemId, positionSec):
+        pass
+
+app = QGuiApplication(sys.argv)
+app.setApplicationName("bigfin")
+app.setDesktopFileName("bigfin")
+
+engine = QQmlApplicationEngine()
+bridge = SessionBridge()
+engine.rootContext().setContextProperty("SessionBridge", bridge)
+
+qml_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
+engine.addImportPath(qml_dir)
+engine.load(sys.argv[1])
+if not engine.rootObjects():
+    sys.exit(1)
+sys.exit(app.exec())
+`, qmlPath}
+	} else if qmlBin, err := exec.LookPath("qmlscene"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
 		args = []string{qmlBin, "-name", "bigfin", qmlPath}
@@ -120,25 +267,6 @@ func main() {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
 		args = []string{qmlBin, "-name", "bigfin", qmlPath}
-	} else if pyBin, err := exec.LookPath("python3"); err == nil && isNativePyQtAvailable(pyBin) {
-		log.Printf("[INFO] Launching QML UI via native host Qt engine: %s\n", pyBin)
-		binPath = pyBin
-		args = []string{pyBin, "-c", `import sys, os
-from PyQt6.QtGui import QGuiApplication
-from PyQt6.QtQml import QQmlApplicationEngine
-
-app = QGuiApplication(sys.argv)
-app.setApplicationName("bigfin")
-app.setDesktopFileName("bigfin")
-
-engine = QQmlApplicationEngine()
-qml_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
-engine.addImportPath(qml_dir)
-engine.load(sys.argv[1])
-if not engine.rootObjects():
-    sys.exit(1)
-sys.exit(app.exec())
-`, qmlPath}
 	} else if flatpakBin, err := exec.LookPath("flatpak"); err == nil {
 		log.Println("[INFO] Native qmlscene binary not found; executing Flatpak org.kde.Sdk environment...")
 		binPath = flatpakBin

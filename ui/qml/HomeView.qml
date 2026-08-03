@@ -754,9 +754,10 @@ Item {
                                 }
 
                                 Text {
-                                    text: modelData.subtitle || "Series"
+                                    text: modelData.seasonsEpisodesStr || modelData.subtitle || "Series"
                                     font.pixelSize: 12
                                     color: "#94a3b8"
+                                    elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
                             }

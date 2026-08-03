@@ -28,6 +28,9 @@ Item {
     signal connectionFailed(string errorMessage)
     signal connectionStatusChanged()
 
+    // Active User Settings State
+    property bool showEndsAtInSubtitle: false
+
     // Saved Sessions State
     property var savedSessions: []
     property string activeSessionId: ""
@@ -146,16 +149,16 @@ Item {
                 for (var j = 0; j < subTokens.length; j++) {
                     var sub = subTokens[j].trim()
                     if (sub !== "") {
+                        while (sub.endsWith("/")) {
+                            sub = sub.substring(0, sub.length - 1)
+                        }
                         if (!sub.startsWith("http://") && !sub.startsWith("https://")) {
                             sub = "http://" + sub
                         }
                         var protoIndex = sub.indexOf("://") + 3
-                        var afterProtocol = sub.substring(protoIndex)
-                        if (afterProtocol.indexOf(":") === -1 && afterProtocol.indexOf("/") === -1) {
+                        var hostAndPort = sub.substring(protoIndex)
+                        if (hostAndPort.indexOf(":") === -1) {
                             sub = sub + ":8096"
-                        }
-                        while (sub.endsWith("/")) {
-                            sub = sub.substring(0, sub.length - 1)
                         }
                         result.push(sub)
                     }
@@ -284,6 +287,14 @@ Item {
 
         if (typeof SessionBridge !== "undefined") {
             SessionBridge.saveSession(targetIps, sName, sVersion, uId, uName, token)
+            try {
+                var jsonStr = SessionBridge.loadSessionsJson()
+                var loadedData = JSON.parse(jsonStr)
+                if (loadedData && loadedData.sessions) {
+                    savedSessions = loadedData.sessions
+                    activeSessionId = loadedData.activeSessionId || ""
+                }
+            } catch(e) {}
         } else {
             var newSess = {
                 id: uId + "_" + Date.now(),
@@ -440,17 +451,37 @@ Item {
             var item = items[i]
             
             var isEpisode = (item.Type === "Episode")
+            var isSeries = (item.Type === "Series" || item.Type === "TvShow" || item.Type === "Show")
+            var isSeason = (item.Type === "Season")
             var isPlaylist = (item.Type === "Playlist")
             var isMusic = (item.Type === "MusicAlbum" || item.Type === "Audio" || item.Type === "MusicArtist" || item.Type === "Playlist")
             var displayTitle = isEpisode ? (item.SeriesName || item.Name || "Untitled") : (item.Name || "Untitled")
             
-            var sNum = item.ParentIndexNumber !== undefined ? item.ParentIndexNumber : ""
-            var eNum = item.IndexNumber !== undefined ? item.IndexNumber : ""
-            var epCode = (sNum !== "" ? ("S" + sNum) : "") + (eNum !== "" ? (":E" + eNum) : "")
+            var sNum = item.ParentIndexNumber !== undefined ? item.ParentIndexNumber : (item.IndexNumber !== undefined && isSeason ? item.IndexNumber : "")
+            var eNum = isEpisode && item.IndexNumber !== undefined ? item.IndexNumber : ""
+            
+            var epCode = ""
+            if (sNum !== "" && eNum !== "") {
+                epCode = "S" + sNum + ":E" + eNum
+            } else if (sNum !== "") {
+                epCode = "S" + sNum
+            } else if (eNum !== "") {
+                epCode = "E" + eNum
+            }
+
+            var childCount = item.ChildCount !== undefined ? item.ChildCount : (item.SeasonCount !== undefined ? item.SeasonCount : 0)
+            var recursiveItemCount = item.RecursiveItemCount !== undefined ? item.RecursiveItemCount : (item.EpisodeCount !== undefined ? item.EpisodeCount : 0)
+            var sCountStr = childCount > 0 ? (childCount + (childCount === 1 ? " Season" : " Seasons")) : ""
+            var eCountStr = recursiveItemCount > 0 ? (recursiveItemCount + (recursiveItemCount === 1 ? " Episode" : " Episodes")) : ""
+            var seasonsEpisodesStr = (sCountStr && eCountStr) ? (sCountStr + " • " + eCountStr) : (sCountStr || eCountStr)
             
             var displaySubtitle = ""
             if (isEpisode) {
                 displaySubtitle = epCode !== "" ? (epCode + (item.Name ? (" - " + item.Name) : "")) : (item.Name || "")
+            } else if (isSeries) {
+                displaySubtitle = seasonsEpisodesStr !== "" ? seasonsEpisodesStr : (item.ProductionYear ? String(item.ProductionYear) : "Series")
+            } else if (isSeason) {
+                displaySubtitle = (sNum !== "" ? ("Season " + sNum) : item.Name) + (childCount > 0 ? (" • " + childCount + " Episodes") : "")
             } else if (isPlaylist) {
                 displaySubtitle = item.ChildCount ? (item.ChildCount + " Tracks • Playlist") : "Playlist"
             } else if (isMusic) {
@@ -475,6 +506,8 @@ Item {
                 poster = liveServerUrl + "/Items/" + item.SeasonId + "/Images/Primary?fillWidth=400&quality=80&format=WEBP"
             }
 
+            var epThumb = liveServerUrl + "/Items/" + item.Id + "/Images/Primary?fillWidth=500&quality=80&format=WEBP"
+
             var backdrop = poster
             if (item.BackdropImageTags && item.BackdropImageTags.length > 0) {
                 backdrop = liveServerUrl + "/Items/" + item.Id + "/Images/Backdrop?fillWidth=960&quality=80&format=WEBP"
@@ -487,6 +520,7 @@ Item {
             if (typeof SessionBridge !== "undefined" && SessionBridge.getCachedImage) {
                 poster = SessionBridge.getCachedImage(poster)
                 backdrop = SessionBridge.getCachedImage(backdrop)
+                epThumb = SessionBridge.getCachedImage(epThumb)
             }
 
             // Official Rating (e.g. TV-Y7, TV-14, PG-13)
@@ -577,6 +611,8 @@ Item {
                 id: item.Id,
                 title: displayTitle,
                 subtitle: displaySubtitle,
+                epCode: epCode,
+                seasonsEpisodesStr: seasonsEpisodesStr,
                 episodeName: item.Name || "",
                 seriesName: item.SeriesName || "",
                 seriesId: item.SeriesId || "",
@@ -590,6 +626,7 @@ Item {
                 overview: item.Overview || "Jellyfin media stream",
                 posterUrl: poster,
                 backdropUrl: backdrop,
+                thumbUrl: isEpisode ? epThumb : backdrop,
                 genres: item.Genres || ["Animation", "Action", "Adventure"],
                 isFavorite: item.UserData ? item.UserData.IsFavorite : false,
                 isPlayed: item.UserData ? item.UserData.Played : false,
@@ -603,7 +640,8 @@ Item {
                 audioSpec: audioSpec,
                 subtitlesSpec: subtitlesSpec,
                 premiereDate: item.PremiereDate ? item.PremiereDate.substring(0, 10) : "",
-                childCount: item.ChildCount !== undefined ? item.ChildCount : 0,
+                childCount: childCount,
+                recursiveItemCount: recursiveItemCount,
                 rawData: item
             })
         }
@@ -616,6 +654,7 @@ Item {
         }
 
         if (!liveServerUrl || !userId || !seriesId) {
+            console.log("[JELLYFIN API] fetchSeasons skipped (ServerURL: " + liveServerUrl + ", UserID: " + userId + ", SeriesID: " + seriesId + ")")
             returnDefaultSeasons()
             return
         }
@@ -623,51 +662,62 @@ Item {
         
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + seriesId + "&IncludeItemTypes=Season&Fields=PrimaryImageAspectRatio,Overview,UserData,ChildCount"
+        console.log("[JELLYFIN REQ] GET " + url)
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
         
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
+                console.log("[JELLYFIN RESP] HTTP " + xhr.status + " for URL: " + url)
                 if (xhr.status === 200) {
                     try {
                         var res = JSON.parse(xhr.responseText)
                         var seasons = parseJellyfinItems(res.Items || [])
-                        console.log("[JELLYFIN API] Seasons returned via ParentId: " + seasons.length)
+                        console.log("[JELLYFIN API SUCCESS] Seasons returned via ParentId: " + seasons.length)
                         if (seasons.length > 0) {
                             if (callback) callback(seasons)
                             return
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] Failed to parse seasons JSON: " + e)
+                    }
                 }
                 
                 var xhr2 = new XMLHttpRequest()
                 var url2 = liveServerUrl + "/Shows/" + seriesId + "/Seasons?UserId=" + userId + "&Fields=PrimaryImageAspectRatio,Overview,UserData,ChildCount"
+                console.log("[JELLYFIN REQ] GET Fallback " + url2)
                 xhr2.open("GET", url2)
                 xhr2.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
                 xhr2.onreadystatechange = function() {
                     if (xhr2.readyState === XMLHttpRequest.DONE) {
+                        console.log("[JELLYFIN RESP] HTTP " + xhr2.status + " for URL: " + url2)
                         if (xhr2.status === 200) {
                             try {
                                 var res2 = JSON.parse(xhr2.responseText)
                                 var seasons2 = parseJellyfinItems(res2.Items || [])
-                                console.log("[JELLYFIN API] Seasons returned via /Shows: " + seasons2.length)
+                                console.log("[JELLYFIN API SUCCESS] Seasons returned via /Shows: " + seasons2.length)
                                 if (seasons2.length > 0) {
                                     if (callback) callback(seasons2)
                                     return
                                 }
-                            } catch (e) {}
+                            } catch (e) {
+                                console.log("[JELLYFIN API ERROR] Failed to parse seasons JSON (fallback): " + e)
+                            }
                         }
                         
                         var xhr3 = new XMLHttpRequest()
                         var url3 = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + seriesId + "&Fields=PrimaryImageAspectRatio,Overview,UserData,ChildCount"
+                        console.log("[JELLYFIN REQ] GET Fallback3 " + url3)
                         xhr3.open("GET", url3)
                         xhr3.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
                         xhr3.onreadystatechange = function() {
                             if (xhr3.readyState === XMLHttpRequest.DONE) {
+                                console.log("[JELLYFIN RESP] HTTP " + xhr3.status + " for URL: " + url3)
                                 if (xhr3.status === 200) {
                                     try {
                                         var res3 = JSON.parse(xhr3.responseText)
                                         var seasons3 = parseJellyfinItems(res3.Items || [])
+                                        console.log("[JELLYFIN API SUCCESS] Seasons returned via ParentId (fallback3): " + seasons3.length)
                                         if (seasons3.length > 0) {
                                             if (callback) callback(seasons3)
                                             return
@@ -692,69 +742,60 @@ Item {
         }
 
         if (!liveServerUrl || !userId || !seriesId) {
+            console.log("[JELLYFIN API] fetchEpisodes skipped (ServerURL: " + liveServerUrl + ", UserID: " + userId + ", SeriesID: " + seriesId + ")")
             returnDefaultEpisodes()
             return
         }
         console.log("[JELLYFIN API] Fetching episodes for Series ID: " + seriesId + " | Season ID: " + seasonId)
 
         var targetParent = seasonId ? seasonId : seriesId
+        
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + targetParent + "&IncludeItemTypes=Episode" + (seasonId ? "" : "&Recursive=true") + "&Fields=PrimaryImageAspectRatio,Overview,MediaSources,UserData,SeriesName,SeriesId,SeasonId,People,Studios,Tags,OfficialRating,ExternalUrls,ProviderIds,PremiereDate"
+        var url = liveServerUrl + "/Shows/" + seriesId + "/Episodes?UserId=" + userId + (seasonId ? ("&SeasonId=" + seasonId) : "") + "&Fields=ParentIndexNumber,IndexNumber,IndexNumberEnd,PrimaryImageAspectRatio,Overview,MediaSources,UserData,People,Studios,Tags,OfficialRating,ExternalUrls,ProviderIds,PremiereDate"
+        console.log("[JELLYFIN REQ] GET " + url)
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
+                console.log("[JELLYFIN RESP] HTTP " + xhr.status + " for URL: " + url)
                 if (xhr.status === 200) {
                     try {
                         var res = JSON.parse(xhr.responseText)
                         var episodes = parseJellyfinItems(res.Items || [])
-                        console.log("[JELLYFIN API] Episodes returned via ParentId: " + episodes.length)
+                        console.log("[JELLYFIN API SUCCESS] Episodes returned via /Shows: " + episodes.length)
                         if (episodes.length > 0) {
                             if (callback) callback(episodes)
                             return
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] Failed to parse episodes JSON: " + e)
+                    }
                 }
 
                 var xhr2 = new XMLHttpRequest()
-                var url2 = liveServerUrl + "/Shows/" + seriesId + "/Episodes?UserId=" + userId + (seasonId ? ("&SeasonId=" + seasonId) : "") + "&Fields=PrimaryImageAspectRatio,Overview,MediaSources,UserData,People,Studios,Tags,OfficialRating,ExternalUrls,ProviderIds,PremiereDate"
+                var url2 = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + targetParent + "&IncludeItemTypes=Episode" + (seasonId ? "" : "&Recursive=true") + "&Fields=ParentIndexNumber,IndexNumber,IndexNumberEnd,PrimaryImageAspectRatio,Overview,MediaSources,UserData,SeriesName,SeriesId,SeasonId,People,Studios,Tags,OfficialRating,ExternalUrls,ProviderIds,PremiereDate"
+                console.log("[JELLYFIN REQ] GET Fallback " + url2)
                 xhr2.open("GET", url2)
                 xhr2.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
                 xhr2.onreadystatechange = function() {
                     if (xhr2.readyState === XMLHttpRequest.DONE) {
+                        console.log("[JELLYFIN RESP] HTTP " + xhr2.status + " for URL: " + url2)
                         if (xhr2.status === 200) {
                             try {
                                 var res2 = JSON.parse(xhr2.responseText)
                                 var episodes2 = parseJellyfinItems(res2.Items || [])
-                                console.log("[JELLYFIN API] Episodes returned via /Shows: " + episodes2.length)
+                                console.log("[JELLYFIN API SUCCESS] Episodes returned via ParentId: " + episodes2.length)
                                 if (episodes2.length > 0) {
                                     if (callback) callback(episodes2)
                                     return
                                 }
-                            } catch (e) {}
-                        }
-                        
-                        var xhr3 = new XMLHttpRequest()
-                        var url3 = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + targetParent + "&Fields=PrimaryImageAspectRatio,Overview,MediaSources,UserData,SeriesName,SeriesId,SeasonId,People,Studios,Tags,OfficialRating,ExternalUrls,ProviderIds,PremiereDate"
-                        xhr3.open("GET", url3)
-                        xhr3.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
-                        xhr3.onreadystatechange = function() {
-                            if (xhr3.readyState === XMLHttpRequest.DONE) {
-                                if (xhr3.status === 200) {
-                                    try {
-                                        var res3 = JSON.parse(xhr3.responseText)
-                                        var episodes3 = parseJellyfinItems(res3.Items || [])
-                                        if (episodes3.length > 0) {
-                                            if (callback) callback(episodes3)
-                                            return
-                                        }
-                                    } catch (e) {}
-                                }
-                                returnDefaultEpisodes()
+                            } catch (e) {
+                                console.log("[JELLYFIN API ERROR] Failed to parse episodes JSON (fallback): " + e)
                             }
                         }
-                        xhr3.send()
+                        
+                        returnDefaultEpisodes()
                     }
                 }
                 xhr2.send()
@@ -774,20 +815,23 @@ Item {
         }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Shows/NextUp?UserId=" + userId + "&SeriesId=" + seriesId + "&Fields=PrimaryImageAspectRatio,Overview,MediaSources,UserData"
+        console.log("[JELLYFIN REQ] GET NextUp: " + url)
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    var res = JSON.parse(xhr.responseText)
-                    var items = parseJellyfinItems(res.Items || [])
-                    if (items.length > 0) {
-                        if (callback) callback(items[0])
-                        return
-                    }
-                } catch (e) {}
-            }
             if (xhr.readyState === XMLHttpRequest.DONE) {
+                console.log("[JELLYFIN RESP] HTTP " + xhr.status + " for NextUp")
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var items = parseJellyfinItems(res.Items || [])
+                        console.log("[JELLYFIN API SUCCESS] NextUp items returned: " + items.length)
+                        if (items.length > 0) {
+                            if (callback) callback(items[0])
+                            return
+                        }
+                    } catch (e) {}
+                }
                 returnDefaultNextUp()
             }
         }
@@ -827,7 +871,7 @@ Item {
     function fetchTVShows() {
         if (!liveServerUrl || !userId) return
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData&Limit=100"
+        var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=100"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
@@ -872,7 +916,7 @@ Item {
     function fetchContinueWatching() {
         if (!liveServerUrl || !userId) return
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items/Resume?Limit=30&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName"
+        var url = liveServerUrl + "/Users/" + userId + "/Items/Resume?Limit=30&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeasonId"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
@@ -912,7 +956,7 @@ Item {
     function fetchNextUpList() {
         if (!liveServerUrl || !userId) return
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Shows/NextUp?UserId=" + userId + "&Limit=25&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName"
+        var url = liveServerUrl + "/Shows/NextUp?UserId=" + userId + "&Limit=25&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeasonId"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
@@ -978,7 +1022,7 @@ Item {
 
     function fetchRecentlyAddedCategory(itemType, callback) {
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items/Latest?IncludeItemTypes=" + itemType + "&Limit=16&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist"
+        var url = liveServerUrl + "/Users/" + userId + "/Items/Latest?IncludeItemTypes=" + itemType + "&Limit=16&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
         xhr.onreadystatechange = function() {
@@ -1007,7 +1051,7 @@ Item {
     function searchJellyfin(query, callback) {
         if (!liveServerUrl || !userId) return
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Movie,Series,Episode,Audio&Fields=PrimaryImageAspectRatio,Overview,CommunityRating,RunTimeTicks,ProductionYear&Limit=40"
+        var url = liveServerUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Movie,Series,Episode,Audio&Fields=PrimaryImageAspectRatio,Overview,CommunityRating,RunTimeTicks,ProductionYear,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=40"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 

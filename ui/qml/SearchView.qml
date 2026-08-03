@@ -177,9 +177,10 @@ Item {
                         }
 
                         Text {
-                            text: modelData.year + " • " + modelData.duration
+                            text: (modelData.mediaType === "Series" || modelData.mediaType === "Episode") ? (modelData.subtitle || modelData.seasonsEpisodesStr || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration)
                             font.pixelSize: 11
                             color: searchCard.activeFocus ? "#e2e8f0" : "#94a3b8"
+                            elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
                     }

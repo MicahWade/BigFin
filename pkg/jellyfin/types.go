@@ -47,6 +47,8 @@ type BaseItem struct {
 	SeasonID             string        `json:"SeasonId,omitempty"`
 	IndexNumber          int           `json:"IndexNumber,omitempty"`
 	ParentIndexNumber    int           `json:"ParentIndexNumber,omitempty"`
+	ChildCount           int           `json:"ChildCount,omitempty"`
+	RecursiveItemCount   int           `json:"RecursiveItemCount,omitempty"`
 }
 
 // ImageTags map for Primary, Logo, Thumb, etc.

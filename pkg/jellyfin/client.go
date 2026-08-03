@@ -147,7 +147,7 @@ func (c *Client) FetchItems(ctx context.Context, parentID string, includeTypes s
 	if limit > 0 {
 		params.Set("Limit", fmt.Sprintf("%d", limit))
 	}
-	params.Set("Fields", "PrimaryImageAspectRatio,Overview,Genres,MediaSources,UserData")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,Genres,MediaSources,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId")
 
 	endpoint := fmt.Sprintf("/Users/%s/Items?%s", c.UserID, params.Encode())
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
@@ -268,7 +268,7 @@ func (c *Client) FetchNextUp(ctx context.Context, limit int) ([]BaseItem, error)
 	if limit > 0 {
 		params.Set("Limit", fmt.Sprintf("%d", limit))
 	}
-	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId")
 
 	endpoint := fmt.Sprintf("/Shows/NextUp?%s", params.Encode())
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
@@ -297,7 +297,7 @@ func (c *Client) FetchResumeItems(ctx context.Context, limit int) ([]BaseItem, e
 	if limit > 0 {
 		params.Set("Limit", fmt.Sprintf("%d", limit))
 	}
-	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId")
 
 	endpoint := fmt.Sprintf("/Users/%s/Items/Resume?%s", c.UserID, params.Encode())
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
@@ -322,7 +322,7 @@ func (c *Client) FetchSeasons(ctx context.Context, seriesID string) ([]BaseItem,
 	if c.UserID == "" {
 		return nil, fmt.Errorf("user not authenticated")
 	}
-	endpoint := fmt.Sprintf("/Shows/%s/Seasons?UserId=%s&Fields=PrimaryImageAspectRatio,Overview,UserData", seriesID, c.UserID)
+	endpoint := fmt.Sprintf("/Shows/%s/Seasons?UserId=%s&Fields=PrimaryImageAspectRatio,Overview,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber", seriesID, c.UserID)
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -350,7 +350,7 @@ func (c *Client) FetchEpisodes(ctx context.Context, seriesID, seasonID string) (
 	if seasonID != "" {
 		params.Set("SeasonId", seasonID)
 	}
-	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,MediaSources,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId")
 
 	endpoint := fmt.Sprintf("/Shows/%s/Episodes?%s", seriesID, params.Encode())
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
@@ -381,7 +381,7 @@ func (c *Client) SearchItems(ctx context.Context, query string, limit int) ([]Ba
 	if limit > 0 {
 		params.Set("Limit", fmt.Sprintf("%d", limit))
 	}
-	params.Set("Fields", "PrimaryImageAspectRatio,Overview,Genres,MediaSources,UserData")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,Genres,MediaSources,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId")
 
 	endpoint := fmt.Sprintf("/Users/%s/Items?%s", c.UserID, params.Encode())
 	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
