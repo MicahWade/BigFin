@@ -516,6 +516,11 @@ Item {
 
     function moveFocusToView() {
         if (viewLoader.item) {
+            if (viewLoader.item.restoreFocus && typeof viewLoader.item.restoreFocus === "function") {
+                if (viewLoader.item.restoreFocus()) {
+                    return
+                }
+            }
             viewLoader.item.forceActiveFocus()
             var focusItem = viewLoader.item.defaultFocusItem
             if (focusItem) {

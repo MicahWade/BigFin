@@ -282,5 +282,25 @@ func TestQMLEpisodeCarouselNavigationAndPerformance(t *testing.T) {
 	if !strings.Contains(homeContent, "continueWatchingList.currentIndex = index - 1") {
 		t.Errorf("HomeView.qml missing Left arrow navigation handling for continue watching carousel!")
 	}
+
+	mainQmlPath := filepath.Join("..", "..", "ui", "qml", "Main.qml")
+	mainContentBytes, err := os.ReadFile(mainQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read Main.qml: %v", err)
+	}
+
+	mainContent := string(mainContentBytes)
+	if !strings.Contains(mainContent, "restoreFocus()") {
+		t.Errorf("Main.qml missing restoreFocus() invocation in moveFocusToView!")
+	}
+
+	if !strings.Contains(detailsContent, "function restoreFocus()") {
+		t.Errorf("DetailsView.qml missing restoreFocus() function to resume focus position!")
+	}
+
+	if !strings.Contains(homeContent, "function restoreFocus()") {
+		t.Errorf("HomeView.qml missing restoreFocus() function to resume focus position!")
+	}
 }
+
 

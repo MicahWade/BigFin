@@ -11,6 +11,21 @@ Item {
     signal requestSidebarFocus()
 
     property var defaultFocusItem: (AppData.continueWatching.length > 0 ? continueWatchingList : (moviesList.count > 0 ? moviesList : (musicList.count > 0 ? musicList : tvList)))
+    property var lastFocusedItem: null
+
+    function restoreFocus() {
+        if (lastFocusedItem && lastFocusedItem.visible) {
+            lastFocusedItem.forceActiveFocus()
+            return true
+        }
+        var def = defaultFocusItem
+        if (def) {
+            def.forceActiveFocus()
+            if (def.currentItem) def.currentItem.forceActiveFocus()
+            return true
+        }
+        return false
+    }
 
     function navigateDownFrom(currentSection) {
         if (currentSection === "cw") {
@@ -196,6 +211,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    homeView.lastFocusedItem = cwCard
                                     mainFlickable.contentY = 0
                                     continueWatchingList.currentIndex = index
                                 }
@@ -416,6 +432,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    homeView.lastFocusedItem = movieCard
                                     mainFlickable.contentY = 140
                                     moviesList.currentIndex = index
                                 }
@@ -601,6 +618,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    homeView.lastFocusedItem = musicCard
                                     mainFlickable.contentY = 380
                                     musicList.currentIndex = index
                                 }
@@ -770,6 +788,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    homeView.lastFocusedItem = tvCard
                                     mainFlickable.contentY = 620
                                     tvList.currentIndex = index
                                 }

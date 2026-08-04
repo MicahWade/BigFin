@@ -12,6 +12,21 @@ Item {
 
     property var item: AppData.featuredHero
     property alias defaultFocusItem: playBtn
+    property var lastFocusedItem: null
+
+    function restoreFocus() {
+        if (lastFocusedItem && lastFocusedItem.visible) {
+            lastFocusedItem.forceActiveFocus()
+            if (typeof ensureVisible === "function") ensureVisible(lastFocusedItem)
+            return true
+        }
+        if (defaultFocusItem) {
+            defaultFocusItem.forceActiveFocus()
+            if (defaultFocusItem.currentItem) defaultFocusItem.currentItem.forceActiveFocus()
+            return true
+        }
+        return false
+    }
 
     function getItemType() {
         if (!item) return "Movie"
@@ -479,6 +494,7 @@ Item {
                             border.color: activeFocus ? AppData.currentTheme.accent : "#0284c7"
                             border.width: activeFocus ? 4 : 2
                             focus: true
+                            onActiveFocusChanged: { if (activeFocus) detailsView.lastFocusedItem = playBtn }
 
                             RowLayout {
                                 anchors.centerIn: parent
@@ -897,6 +913,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    detailsView.lastFocusedItem = epSwimCard
                                     seasonEpListView.currentIndex = index
                                     detailsView.ensureVisible(epSwimCard)
                                 }
@@ -1106,7 +1123,10 @@ Item {
                             focus: true
 
                             onActiveFocusChanged: {
-                                if (activeFocus) castListView.currentIndex = index
+                                if (activeFocus) {
+                                    detailsView.lastFocusedItem = castCard
+                                    castListView.currentIndex = index
+                                }
                             }
 
                             ColumnLayout {
