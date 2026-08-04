@@ -309,18 +309,19 @@ func TestQMLEpisodeCarouselNavigationAndPerformance(t *testing.T) {
 	}
 
 	appDataContent := string(appDataBytes)
-	if !strings.Contains(appDataContent, "seasonNavGoesToStart: true") {
-		t.Errorf("AppData.qml missing default true seasonNavGoesToStart property!")
+	if !strings.Contains(appDataContent, "seasonNavModeIdx: 0") {
+		t.Errorf("AppData.qml missing default seasonNavModeIdx property!")
 	}
 
-	if !strings.Contains(detailsContent, "seasonNavGoesToStart") {
-		t.Errorf("DetailsView.qml missing seasonNavGoesToStart check in vertical season navigation!")
+	if !strings.Contains(detailsContent, "seasonNavModeIdx") {
+		t.Errorf("DetailsView.qml missing seasonNavModeIdx check in vertical season navigation!")
 	}
 
 	if !strings.Contains(detailsContent, "targetY = (itemY + itemH / 2) - (viewH / 2)") {
 		t.Errorf("DetailsView.qml missing middle-row vertical centering math in ensureVisible!")
 	}
 }
+
 
 
 

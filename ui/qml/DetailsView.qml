@@ -841,6 +841,7 @@ Item {
                 delegate: ColumnLayout {
                     id: seasonSwimlaneCol
                     property int seasonRowIndex: index
+                    property bool hasBeenSelected: false
                     Layout.fillWidth: true
                     Layout.leftMargin: 48
                     Layout.rightMargin: 48
@@ -855,7 +856,19 @@ Item {
 
                     function focusCurrentOrFirstCard(idx) {
                         seasonEpListView.forceActiveFocus()
-                        var targetIndex = (AppData && AppData.seasonNavGoesToStart) ? 0 : (seasonEpListView.currentIndex >= 0 ? seasonEpListView.currentIndex : Math.min(idx, seasonEpListView.count - 1))
+                        var mode = (AppData ? AppData.seasonNavModeIdx : 0)
+                        var targetIndex = 0
+                        if (mode === 1) {
+                            targetIndex = Math.min(idx, seasonEpListView.count - 1)
+                        } else if (mode === 2) {
+                            targetIndex = 0
+                        } else {
+                            if (seasonSwimlaneCol.hasBeenSelected && seasonEpListView.currentIndex >= 0) {
+                                targetIndex = seasonEpListView.currentIndex
+                            } else {
+                                targetIndex = 0
+                            }
+                        }
                         if (targetIndex >= 0 && targetIndex < seasonEpListView.count) {
                             seasonEpListView.currentIndex = targetIndex
                         }
@@ -916,6 +929,7 @@ Item {
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
+                                    seasonSwimlaneCol.hasBeenSelected = true
                                     detailsView.lastFocusedItem = epSwimCard
                                     seasonEpListView.currentIndex = index
                                     detailsView.ensureVisible(epSwimCard)
