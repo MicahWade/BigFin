@@ -30,6 +30,7 @@ Item {
     property bool diagnosticHudEnabled: true
     property var navSpeeds: ["Standard (60fps)", "Fast", "Instant"]
     property int navSpeedIdx: 0
+    property bool seasonNavGoesToStart: AppData.seasonNavGoesToStart
 
     // Category 2: Video Playback & Bitrate (6 items)
     property var homeBitrates: ["120 Mbps (4K HDR)", "80 Mbps (1080p)", "40 Mbps (1080p)", "10 Mbps (720p)"]
@@ -498,6 +499,8 @@ Item {
                     }
 
                     Keys.onReturnPressed: settingsView.triggerSubAction(settingsView.activeCategory, index)
+                    Keys.onEnterPressed: settingsView.triggerSubAction(settingsView.activeCategory, index)
+                    Keys.onSelectPressed: settingsView.triggerSubAction(settingsView.activeCategory, index)
                     Keys.onSpacePressed: settingsView.triggerSubAction(settingsView.activeCategory, index)
 
                     Keys.onLeftPressed: function(event) {
@@ -653,7 +656,7 @@ Item {
             if (itemIdx === 2) return themeStyles[themeStyleIdx]
             if (itemIdx === 3) return diagnosticHudEnabled ? "ENABLED" : "DISABLED"
             if (itemIdx === 4) return navSpeeds[navSpeedIdx]
-            return AppData.seasonNavGoesToStart ? "ENABLED (EPISODE 1)" : "DISABLED (PRESERVE INDEX)"
+            return settingsView.seasonNavGoesToStart ? "ENABLED (EPISODE 1)" : "DISABLED (PRESERVE INDEX)"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return homeBitrates[homeBitrateIdx]
@@ -708,7 +711,10 @@ Item {
             }
             else if (itemIdx === 3) diagnosticHudEnabled = !diagnosticHudEnabled
             else if (itemIdx === 4) navSpeedIdx = (navSpeedIdx + 1) % navSpeeds.length
-            else AppData.seasonNavGoesToStart = !AppData.seasonNavGoesToStart
+            else {
+                settingsView.seasonNavGoesToStart = !settingsView.seasonNavGoesToStart
+                AppData.seasonNavGoesToStart = settingsView.seasonNavGoesToStart
+            }
         }
         else if (catIdx === 2) {
             if (itemIdx === 0) homeBitrateIdx = (homeBitrateIdx + 1) % homeBitrates.length
