@@ -855,7 +855,7 @@ Item {
 
                     function focusCurrentOrFirstCard(idx) {
                         seasonEpListView.forceActiveFocus()
-                        var targetIndex = (AppData && AppData.seasonNavGoesToStart) ? 0 : Math.min(idx, seasonEpListView.count - 1)
+                        var targetIndex = (AppData && AppData.seasonNavGoesToStart) ? 0 : (seasonEpListView.currentIndex >= 0 ? seasonEpListView.currentIndex : Math.min(idx, seasonEpListView.count - 1))
                         if (targetIndex >= 0 && targetIndex < seasonEpListView.count) {
                             seasonEpListView.currentIndex = targetIndex
                         }
