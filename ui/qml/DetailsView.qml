@@ -172,21 +172,33 @@ Item {
     }
 
     function getInProgressEpisode() {
-        if (nextUpEpisode) {
-            var nEp = nextUpEpisode
-            if ((nEp.progress && nEp.progress > 0 && nEp.progress < 0.95) ||
-                (nEp.rawData && nEp.rawData.UserData && nEp.rawData.UserData.PlaybackPositionTicks > 0 && !nEp.rawData.UserData.Played)) {
-                return nEp
+        function isEpInProgress(ep) {
+            if (!ep) return false
+            if (ep.isPlayed === true) return false
+            if (ep.rawData && ep.rawData.UserData) {
+                var ud = ep.rawData.UserData
+                if (ud.Played === true) return false
+                if (ud.PlaybackPositionTicks && ud.PlaybackPositionTicks > 100000000) {
+                    return true
+                }
             }
+            if (ep.progress && ep.progress > 0.01 && ep.progress < 0.92) {
+                return true
+            }
+            return false
         }
+
+        if (nextUpEpisode && isEpInProgress(nextUpEpisode)) {
+            return nextUpEpisode
+        }
+
         if (seasonsWithEpisodes) {
             for (var i = 0; i < seasonsWithEpisodes.length; i++) {
                 var s = seasonsWithEpisodes[i]
                 if (s.episodes) {
                     for (var j = 0; j < s.episodes.length; j++) {
                         var ep = s.episodes[j]
-                        if ((ep.progress && ep.progress > 0 && ep.progress < 0.95) ||
-                            (ep.rawData && ep.rawData.UserData && ep.rawData.UserData.PlaybackPositionTicks > 0 && !ep.rawData.UserData.Played)) {
+                        if (isEpInProgress(ep)) {
                             return ep
                         }
                     }
@@ -230,8 +242,15 @@ Item {
 
     function getPlayButtonText() {
         if (!isSeries) {
-            if (item && ((item.progress && item.progress > 0) || (item.rawData && item.rawData.UserData && item.rawData.UserData.PlaybackPositionTicks > 0))) {
-                return "Continue"
+            if (item) {
+                if (item.isPlayed === true || (item.rawData && item.rawData.UserData && item.rawData.UserData.Played === true)) {
+                    return "Play"
+                }
+                var posTicks = (item.rawData && item.rawData.UserData) ? (item.rawData.UserData.PlaybackPositionTicks || 0) : 0
+                var prog = item.progress || 0
+                if ((posTicks > 100000000) || (prog > 0.01 && prog < 0.92)) {
+                    return "Continue"
+                }
             }
             return "Play"
         }
