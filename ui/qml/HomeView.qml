@@ -736,6 +736,7 @@ Item {
                                         width: 50
                                         radius: 4
                                         color: "#d00f172a"
+                                        visible: AppData.isRatingVisible(modelData)
 
                                         Text {
                                             anchors.centerIn: parent

@@ -32,6 +32,101 @@ Item {
     property bool showEndsAtInSubtitle: false
     property int seasonNavModeIdx: 0
     property bool seasonNavGoesToStart: seasonNavModeIdx === 0 || seasonNavModeIdx === 2
+    property bool showRatings: true
+    property int ratingsCategoryIdx: 0 // 0: Movies & TV Series, 1: Movies Only, 2: TV Series Only, 3: All Media Types
+    readonly property var ratingsCategoryOptions: ["Movies & TV Series", "Movies Only", "TV Series Only", "All Media Types"]
+
+    function isRatingVisible(item) {
+        if (!showRatings) return false
+        if (!item) return false
+
+        var mediaType = item.mediaType || item.Type || ""
+        var isMusic = (mediaType === "MusicAlbum" || mediaType === "Audio" || mediaType === "MusicArtist" || mediaType === "Playlist" || !!item.artist || !!item.album)
+
+        if (isMusic && ratingsCategoryIdx !== 3) {
+            return false
+        }
+
+        var isMovie = (mediaType === "Movie" || mediaType === "movie")
+        var isTV = (mediaType === "Series" || mediaType === "series" || mediaType === "Episode" || mediaType === "TvProgram")
+
+        if (ratingsCategoryIdx === 0) {
+            return isMovie || isTV
+        } else if (ratingsCategoryIdx === 1) {
+            return isMovie
+        } else if (ratingsCategoryIdx === 2) {
+            return isTV
+        } else if (ratingsCategoryIdx === 3) {
+            return true
+        }
+
+        return isMovie || isTV
+    }
+
+    // TTL Cache Engine for UI Data Across All Screens
+    property var dataCache: ({})
+    property int defaultCacheTtlMs: 300000 // 5 minutes default TTL
+
+    Timer {
+        id: cacheCleanupTimer
+        interval: 30000 // Run cleanup every 30 seconds
+        running: true
+        repeat: true
+        onTriggered: appData.clearExpiredCache()
+    }
+
+    function getCachedData(key) {
+        if (!dataCache || !dataCache[key]) return null
+        var entry = dataCache[key]
+        var now = Date.now()
+        if (now - entry.timestamp < entry.ttlMs) {
+            console.log("[CACHE HIT] Key: " + key + " (Age: " + Math.round((now - entry.timestamp)/1000) + "s)")
+            return entry.data
+        }
+        console.log("[CACHE EXPIRED] Evicting key: " + key)
+        delete dataCache[key]
+        return null
+    }
+
+    function setCachedData(key, data, customTtlMs) {
+        if (!dataCache) dataCache = {}
+        var ttl = (customTtlMs !== undefined && customTtlMs !== null) ? customTtlMs : defaultCacheTtlMs
+        dataCache[key] = {
+            data: data,
+            timestamp: Date.now(),
+            ttlMs: ttl
+        }
+        console.log("[CACHE STORE] Saved key: " + key + " with TTL: " + Math.round(ttl/1000) + "s")
+    }
+
+    function clearExpiredCache() {
+        if (!dataCache) return
+        var now = Date.now()
+        var evictedCount = 0
+        for (var k in dataCache) {
+            if (dataCache.hasOwnProperty(k)) {
+                if (now - dataCache[k].timestamp >= dataCache[k].ttlMs) {
+                    delete dataCache[k]
+                    evictedCount++
+                }
+            }
+        }
+        if (evictedCount > 0) {
+            console.log("[CACHE CLEANUP] Evicted " + evictedCount + " expired cache items.")
+        }
+    }
+
+    function invalidateCacheKey(key) {
+        if (dataCache && dataCache[key]) {
+            delete dataCache[key]
+            console.log("[CACHE INVALIDATE] Removed key: " + key)
+        }
+    }
+
+    function clearAllCache() {
+        dataCache = {}
+        console.log("[CACHE CLEAR] Cleared entire UI data cache.")
+    }
 
     // Saved Sessions State
     property var savedSessions: []
@@ -683,6 +778,14 @@ Item {
             returnDefaultSeasons()
             return
         }
+
+        var cacheKey = "seasons_" + seriesId
+        var cached = getCachedData(cacheKey)
+        if (cached) {
+            if (callback) callback(cached)
+            return
+        }
+
         console.log("[JELLYFIN API] Fetching Seasons for Series ID: " + seriesId)
         
         var xhr = new XMLHttpRequest()
@@ -700,6 +803,7 @@ Item {
                         var seasons = parseJellyfinItems(res.Items || [])
                         console.log("[JELLYFIN API SUCCESS] Seasons returned via ParentId: " + seasons.length)
                         if (seasons.length > 0) {
+                            setCachedData(cacheKey, seasons, 600000)
                             if (callback) callback(seasons)
                             return
                         }
@@ -722,6 +826,7 @@ Item {
                                 var seasons2 = parseJellyfinItems(res2.Items || [])
                                 console.log("[JELLYFIN API SUCCESS] Seasons returned via /Shows: " + seasons2.length)
                                 if (seasons2.length > 0) {
+                                    setCachedData(cacheKey, seasons2, 600000)
                                     if (callback) callback(seasons2)
                                     return
                                 }
@@ -744,6 +849,7 @@ Item {
                                         var seasons3 = parseJellyfinItems(res3.Items || [])
                                         console.log("[JELLYFIN API SUCCESS] Seasons returned via ParentId (fallback3): " + seasons3.length)
                                         if (seasons3.length > 0) {
+                                            setCachedData(cacheKey, seasons3, 600000)
                                             if (callback) callback(seasons3)
                                             return
                                         }
@@ -771,6 +877,14 @@ Item {
             returnDefaultEpisodes()
             return
         }
+
+        var cacheKey = "episodes_" + seriesId + "_" + (seasonId || "all")
+        var cached = getCachedData(cacheKey)
+        if (cached) {
+            if (callback) callback(cached)
+            return
+        }
+
         console.log("[JELLYFIN API] Fetching episodes for Series ID: " + seriesId + " | Season ID: " + seasonId)
 
         var targetParent = seasonId ? seasonId : seriesId
@@ -790,6 +904,7 @@ Item {
                         var episodes = parseJellyfinItems(res.Items || [])
                         console.log("[JELLYFIN API SUCCESS] Episodes returned via /Shows: " + episodes.length)
                         if (episodes.length > 0) {
+                            setCachedData(cacheKey, episodes, 600000)
                             if (callback) callback(episodes)
                             return
                         }
@@ -812,6 +927,7 @@ Item {
                                 var episodes2 = parseJellyfinItems(res2.Items || [])
                                 console.log("[JELLYFIN API SUCCESS] Episodes returned via ParentId: " + episodes2.length)
                                 if (episodes2.length > 0) {
+                                    setCachedData(cacheKey, episodes2, 600000)
                                     if (callback) callback(episodes2)
                                     return
                                 }
@@ -838,6 +954,14 @@ Item {
             returnDefaultNextUp()
             return
         }
+
+        var cacheKey = "next_up_" + seriesId
+        var cached = getCachedData(cacheKey)
+        if (cached !== null) {
+            if (callback) callback(cached)
+            return
+        }
+
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Shows/NextUp?UserId=" + userId + "&SeriesId=" + seriesId + "&Fields=PrimaryImageAspectRatio,Overview,MediaSources,UserData"
         console.log("[JELLYFIN REQ] GET NextUp: " + url)
@@ -852,6 +976,7 @@ Item {
                         var items = parseJellyfinItems(res.Items || [])
                         console.log("[JELLYFIN API SUCCESS] NextUp items returned: " + items.length)
                         if (items.length > 0) {
+                            setCachedData(cacheKey, items[0], 180000)
                             if (callback) callback(items[0])
                             return
                         }
@@ -865,6 +990,16 @@ Item {
 
     function fetchMovies() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("movies")
+        if (cached) {
+            moviesList = cached
+            if (cached.length > 0 && !featuredHero) {
+                featuredHero = cached[0]
+                featuredHero.quality = "4K Direct Stream"
+            }
+            updateMasterGrid()
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData&Limit=100"
         xhr.open("GET", url)
@@ -876,6 +1011,7 @@ Item {
                     var res = JSON.parse(xhr.responseText)
                     var parsed = parseJellyfinItems(res.Items || [])
                     moviesList = parsed
+                    setCachedData("movies", parsed, 300000)
                     console.log("[JELLYFIN API] Loaded " + parsed.length + " MOVIES")
                     
                     if (parsed.length > 0) {
@@ -895,6 +1031,12 @@ Item {
 
     function fetchTVShows() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("tvshows")
+        if (cached) {
+            tvShowsList = cached
+            updateMasterGrid()
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=100"
         xhr.open("GET", url)
@@ -906,6 +1048,7 @@ Item {
                     var res = JSON.parse(xhr.responseText)
                     var parsed = parseJellyfinItems(res.Items || [])
                     tvShowsList = parsed
+                    setCachedData("tvshows", parsed, 300000)
                     console.log("[JELLYFIN API] Loaded " + parsed.length + " TV SHOWS")
                     updateMasterGrid()
                 } catch (e) {
@@ -918,6 +1061,11 @@ Item {
 
     function fetchFavorites() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("favorites")
+        if (cached) {
+            favoritesList = cached
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?Filters=IsFavorite&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData&Limit=100"
         xhr.open("GET", url)
@@ -929,6 +1077,7 @@ Item {
                     var res = JSON.parse(xhr.responseText)
                     var parsed = parseJellyfinItems(res.Items || [])
                     favoritesList = parsed
+                    setCachedData("favorites", parsed, 180000)
                     console.log("[JELLYFIN API] Loaded " + parsed.length + " FAVORITES")
                 } catch (e) {
                     console.log("[JELLYFIN API ERROR] Favorites parse fail: " + e)
@@ -940,6 +1089,11 @@ Item {
 
     function fetchContinueWatching() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("continue_watching")
+        if (cached) {
+            continueWatching = cached
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items/Resume?Limit=30&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeasonId"
         xhr.open("GET", url)
@@ -969,6 +1123,7 @@ Item {
                         parsed[i].timeLeft = "In Progress"
                     }
                     continueWatching = parsed
+                    setCachedData("continue_watching", parsed, 120000)
                     console.log("[JELLYFIN API] Loaded " + parsed.length + " deduplicated CONTINUE WATCHING items (1 per show)")
                 } catch (e) {
                     console.log("[JELLYFIN API ERROR] Continue watching fail: " + e)
@@ -980,6 +1135,11 @@ Item {
 
     function fetchNextUpList() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("next_up_list")
+        if (cached) {
+            nextUpList = cached
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Shows/NextUp?UserId=" + userId + "&Limit=25&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,SeriesId,SeriesName,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeasonId"
         xhr.open("GET", url)
@@ -995,6 +1155,7 @@ Item {
                         parsed[i].timeLeft = "Next Up"
                     }
                     nextUpList = parsed
+                    setCachedData("next_up_list", parsed, 120000)
                     console.log("[JELLYFIN API] Loaded " + parsed.length + " NEXT UP episodes")
                 } catch (e) {
                     console.log("[JELLYFIN API ERROR] Next Up parse fail: " + e)
@@ -1006,6 +1167,12 @@ Item {
 
     function fetchMusic() {
         if (!liveServerUrl || !userId) return
+        var cached = getCachedData("music")
+        if (cached) {
+            musicList = cached
+            updateMasterGrid()
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Playlist,MusicAlbum,Audio&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount&Limit=100"
         xhr.open("GET", url)
@@ -1030,6 +1197,7 @@ Item {
                         playlistsList = playlists
                     }
                     musicList = playlists.concat(nonPlaylists)
+                    setCachedData("music", musicList, 300000)
                     console.log("[JELLYFIN API] Loaded " + playlists.length + " Playlists and " + nonPlaylists.length + " Music items")
                     updateMasterGrid()
                 } catch (e) {
@@ -1068,6 +1236,12 @@ Item {
     }
 
     function fetchRecentlyAddedCategory(itemType, callback) {
+        var cacheKey = "recently_added_" + itemType
+        var cached = getCachedData(cacheKey)
+        if (cached) {
+            if (callback) callback(cached)
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items/Latest?IncludeItemTypes=" + itemType + "&Limit=16&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId"
         xhr.open("GET", url)
@@ -1078,6 +1252,7 @@ Item {
                     var res = JSON.parse(xhr.responseText)
                     var rawItems = Array.isArray(res) ? res : (res.Items || [])
                     var parsed = parseJellyfinItems(rawItems)
+                    setCachedData(cacheKey, parsed, 300000)
                     if (callback) callback(parsed)
                 } catch (e) {
                     if (callback) callback([])
@@ -1097,6 +1272,13 @@ Item {
 
     function searchJellyfin(query, callback) {
         if (!liveServerUrl || !userId) return
+        var cacheKey = "search_" + query.toLowerCase().trim()
+        var cached = getCachedData(cacheKey)
+        if (cached) {
+            searchResults = cached
+            if (callback) callback(cached)
+            return
+        }
         var xhr = new XMLHttpRequest()
         var url = liveServerUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Movie,Series,Episode,Audio&Fields=PrimaryImageAspectRatio,Overview,CommunityRating,RunTimeTicks,ProductionYear,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=40"
         xhr.open("GET", url)
@@ -1108,6 +1290,7 @@ Item {
                     var res = JSON.parse(xhr.responseText)
                     var results = parseJellyfinItems(res.Items || [])
                     searchResults = results
+                    setCachedData(cacheKey, results, 120000)
                     if (callback) callback(results)
                 } catch (e) {}
             }
@@ -1124,7 +1307,12 @@ Item {
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) fetchFavorites()
+                if (xhr.status === 200) {
+                    invalidateCacheKey("favorites")
+                    invalidateCacheKey("movies")
+                    invalidateCacheKey("tvshows")
+                    fetchFavorites()
+                }
                 if (callback) callback(xhr.status === 200)
             }
         }

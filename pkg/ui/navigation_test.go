@@ -322,6 +322,172 @@ func TestQMLEpisodeCarouselNavigationAndPerformance(t *testing.T) {
 	}
 }
 
+// TestQMLGridUpArrowNavigation verifies that QML GridViews (GridView.qml, SearchView.qml)
+// handle Up Arrow key navigation when index >= columns by moving to the target index (index - columns).
+func TestQMLGridUpArrowNavigation(t *testing.T) {
+	gridQmlPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridContentBytes, err := os.ReadFile(gridQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+
+	gridContent := string(gridContentBytes)
+
+	if !strings.Contains(gridContent, "index - columns") && !strings.Contains(gridContent, "currentIndex - columns") {
+		t.Errorf("GridView.qml missing Up Arrow row navigation math (index - columns) for multi-row grids!")
+	}
+
+	searchQmlPath := filepath.Join("..", "..", "ui", "qml", "SearchView.qml")
+	searchContentBytes, err := os.ReadFile(searchQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read SearchView.qml: %v", err)
+	}
+
+	searchContent := string(searchContentBytes)
+
+	if !strings.Contains(searchContent, "index - columns") {
+		t.Errorf("SearchView.qml missing Up Arrow row navigation math (index - columns) for search results grid!")
+	}
+}
+
+// TestQMLRatingsVisibilitySettings verifies that AppData.qml and view components correctly integrate
+// rating visibility controls (showRatings, ratingsCategoryIdx, isRatingVisible) and settings UI bindings.
+func TestQMLRatingsVisibilitySettings(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+
+	appDataContent := string(appDataBytes)
+
+	if !strings.Contains(appDataContent, "showRatings") {
+		t.Errorf("AppData.qml missing showRatings property!")
+	}
+	if !strings.Contains(appDataContent, "ratingsCategoryIdx") {
+		t.Errorf("AppData.qml missing ratingsCategoryIdx property!")
+	}
+	if !strings.Contains(appDataContent, "function isRatingVisible(item)") {
+		t.Errorf("AppData.qml missing isRatingVisible(item) function!")
+	}
+
+	settingsPath := filepath.Join("..", "..", "ui", "qml", "SettingsView.qml")
+	settingsBytes, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("Failed to read SettingsView.qml: %v", err)
+	}
+
+	settingsContent := string(settingsBytes)
+
+	if !strings.Contains(settingsContent, "Enable Star Ratings Display") {
+		t.Errorf("SettingsView.qml missing Enable Star Ratings Display option!")
+	}
+	if !strings.Contains(settingsContent, "Star Ratings Media Filter") {
+		t.Errorf("SettingsView.qml missing Star Ratings Media Filter option!")
+	}
+
+	gridPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridBytes, err := os.ReadFile(gridPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+	gridContent := string(gridBytes)
+	if !strings.Contains(gridContent, "AppData.isRatingVisible(modelData)") {
+		t.Errorf("GridView.qml missing AppData.isRatingVisible(modelData) check!")
+	}
+
+	homePath := filepath.Join("..", "..", "ui", "qml", "HomeView.qml")
+	homeBytes, err := os.ReadFile(homePath)
+	if err != nil {
+		t.Fatalf("Failed to read HomeView.qml: %v", err)
+	}
+	homeContent := string(homeBytes)
+	if !strings.Contains(homeContent, "AppData.isRatingVisible(modelData)") {
+		t.Errorf("HomeView.qml missing AppData.isRatingVisible(modelData) check!")
+	}
+}
+
+// TestQMLTTLCacheAndDynamicLoading verifies that AppData.qml and DetailsView.qml implement:
+// 1. A TTL Cache Engine with automatic timer cleanup and evicted cache logic across all UI fetch calls.
+// 2. Dynamic/Lazy loading in DetailsView.qml (rendering initial season instantly and loading remaining seasons in background).
+// 3. Off-thread asynchronous image decoding and caching across QML views.
+func TestQMLTTLCacheAndDynamicLoading(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+
+	appDataContent := string(appDataBytes)
+
+	// Verify TTL Cache Engine primitives
+	cachePrimitives := []string{
+		"dataCache",
+		"getCachedData",
+		"setCachedData",
+		"clearExpiredCache",
+		"invalidateCacheKey",
+		"clearAllCache",
+		"cacheCleanupTimer",
+	}
+	for _, prim := range cachePrimitives {
+		if !strings.Contains(appDataContent, prim) {
+			t.Errorf("AppData.qml missing TTL cache primitive: %s", prim)
+		}
+	}
+
+	// Verify caching integration across UI fetch endpoints
+	cachedFetchCalls := []string{
+		"seasons_",
+		"episodes_",
+		"next_up_",
+		"movies",
+		"tvshows",
+		"favorites",
+		"continue_watching",
+		"next_up_list",
+		"music",
+		"recently_added_",
+		"search_",
+	}
+	for _, callKey := range cachedFetchCalls {
+		if !strings.Contains(appDataContent, callKey) {
+			t.Errorf("AppData.qml missing cache key integration for: %s", callKey)
+		}
+	}
+
+	// Verify DetailsView.qml dynamic loading logic
+	detailsPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	detailsBytes, err := os.ReadFile(detailsPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+	detailsContent := string(detailsBytes)
+
+	if !strings.Contains(detailsContent, "loadRemainingSeasonsInBackground") {
+		t.Errorf("DetailsView.qml missing loadRemainingSeasonsInBackground function for dynamic season loading!")
+	}
+	if !strings.Contains(detailsContent, "DYNAMIC LOAD INITIAL") {
+		t.Errorf("DetailsView.qml missing initial instant season render logic!")
+	}
+
+	// Verify Image Async & Cache settings
+	if !strings.Contains(detailsContent, "asynchronous: true") || !strings.Contains(detailsContent, "cache: true") {
+		t.Errorf("DetailsView.qml missing asynchronous and cache image properties!")
+	}
+
+	mediaGridPath := filepath.Join("..", "..", "ui", "qml", "components", "MediaGrid.qml")
+	mediaGridBytes, err := os.ReadFile(mediaGridPath)
+	if err == nil {
+		mediaGridContent := string(mediaGridBytes)
+		if !strings.Contains(mediaGridContent, "asynchronous: true") || !strings.Contains(mediaGridContent, "cache: true") {
+			t.Errorf("MediaGrid.qml missing asynchronous: true or cache: true on poster images!")
+		}
+	}
+}
+
+
+
 
 
 

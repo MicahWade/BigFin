@@ -337,8 +337,14 @@ Item {
                     } else {
                         gridView.requestSidebarFocus()
                     }
-                    event.accepted = true
+                } else {
+                    var targetIdx = currentIndex - columns
+                    if (targetIdx >= 0) {
+                        mediaGridView.currentIndex = targetIdx
+                        if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                    }
                 }
+                event.accepted = true
             }
 
             model: {
@@ -414,6 +420,8 @@ Item {
                                 source: isShowItem ? (modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl) : modelData.posterUrl
                                 fillMode: Image.PreserveAspectCrop
                                 smooth: true
+                                asynchronous: true
+                                cache: true
                             }
 
                             // Centered Play Button Overlay for TV Shows (Matches attached screenshot)
@@ -466,7 +474,7 @@ Item {
                                 height: 22
                                 radius: 4
                                 color: (modelData.mediaType === "Playlist" || modelData.Type === "Playlist") ? "#cc6366f1" : "#cc0f172a"
-                                visible: !isShowItem
+                                visible: !isShowItem && ((modelData.mediaType === "Playlist" || modelData.Type === "Playlist") || AppData.isRatingVisible(modelData))
 
                                 Text {
                                     anchors.centerIn: parent
@@ -538,8 +546,35 @@ Item {
                             } else {
                                 gridView.requestSidebarFocus()
                             }
-                            event.accepted = true
+                        } else {
+                            var targetIdx = index - columns
+                            if (targetIdx >= 0) {
+                                mediaGridView.currentIndex = targetIdx
+                                if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                            }
                         }
+                        event.accepted = true
+                    }
+
+                    Keys.onDownPressed: function(event) {
+                        var columns = Math.max(1, Math.floor(mediaGridView.width / mediaGridView.cellWidth))
+                        if (columns <= 0) columns = 1
+                        if (index + columns < mediaGridView.count) {
+                            mediaGridView.currentIndex = index + columns
+                            if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                        } else if (index < mediaGridView.count - 1) {
+                            mediaGridView.currentIndex = mediaGridView.count - 1
+                            if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
+                    }
+
+                    Keys.onRightPressed: function(event) {
+                        if (index < mediaGridView.count - 1) {
+                            mediaGridView.currentIndex = index + 1
+                            if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
                     }
                 }
             }

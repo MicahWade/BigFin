@@ -210,6 +210,52 @@ Item {
         return result
     }
 
+    function loadRemainingSeasonsInBackground(sId, seasons, startIdx) {
+        if (!seasons || startIdx >= seasons.length) return
+        var idx = startIdx
+
+        function fetchNextBgSeason() {
+            if (detailsView.getSeriesId() !== sId) return
+            if (idx >= seasons.length) return
+
+            var sObj = seasons[idx]
+            AppData.fetchEpisodes(sId, sObj.id, function(eps) {
+                if (detailsView.getSeriesId() !== sId) return
+
+                var bgSeasonObj = {
+                    id: sObj.id,
+                    seasonNumber: sObj.seasonNumber || (idx + 1),
+                    title: sObj.title || ("Season " + (idx + 1)),
+                    episodes: (eps && eps.length > 0) ? eps : [],
+                    childCount: (eps && eps.length > 0) ? eps.length : (sObj.childCount || 0)
+                }
+
+                var currentList = detailsView.seasonsWithEpisodes ? detailsView.seasonsWithEpisodes.slice() : []
+                var exists = false
+                for (var c = 0; c < currentList.length; c++) {
+                    if (currentList[c].id === bgSeasonObj.id) {
+                        currentList[c] = bgSeasonObj
+                        exists = true
+                        break
+                    }
+                }
+                if (!exists) {
+                    currentList.push(bgSeasonObj)
+                }
+                currentList.sort(function(a, b) { return a.seasonNumber - b.seasonNumber })
+                detailsView.seasonsWithEpisodes = currentList
+                console.log("[DYNAMIC LOAD BG] Season " + bgSeasonObj.seasonNumber + " loaded asynchronously (" + (idx + 1) + "/" + seasons.length + ")")
+
+                idx++
+                if (idx < seasons.length) {
+                    fetchNextBgSeason()
+                }
+            })
+        }
+
+        fetchNextBgSeason()
+    }
+
     function loadData() {
         seasonsList = []
         episodesList = []
@@ -231,55 +277,52 @@ Item {
                     if (nextEp) nextUpEpisode = nextEp
                 })
 
-                // Primary: Fetch all episodes for the series directly from Jellyfin
-                AppData.fetchEpisodes(sId, "", function(allEps) {
-                    if (allEps && allEps.length > 0) {
-                        console.log("[DETAILS] Successfully loaded " + allEps.length + " live Jellyfin episodes for series ID: " + sId)
-                        episodesList = allEps
-                        seasonsWithEpisodes = groupEpisodesBySeason(allEps)
+                // DYNAMIC & LAZY LOADING PIPELINE:
+                // 1. Fetch seasons listing first (fast metadata call)
+                // 2. Fetch & render initial active season immediately so user sees Season 1 right away
+                // 3. Load remaining seasons in background asynchronously
+                AppData.fetchSeasons(sId, function(seasons) {
+                    if (seasons && seasons.length > 0) {
+                        seasonsList = seasons
+                        
+                        var firstSeason = seasons[0]
+                        AppData.fetchEpisodes(sId, firstSeason.id, function(initialEps) {
+                            if (detailsView.getSeriesId() !== sId) return
+
+                            var firstSeasonObj = {
+                                id: firstSeason.id,
+                                seasonNumber: firstSeason.seasonNumber || 1,
+                                title: firstSeason.title || "Season 1",
+                                episodes: (initialEps && initialEps.length > 0) ? initialEps : [],
+                                childCount: (initialEps && initialEps.length > 0) ? initialEps.length : (firstSeason.childCount || 0)
+                            }
+                            seasonsWithEpisodes = [firstSeasonObj]
+                            console.log("[DYNAMIC LOAD INITIAL] Instant render for Season " + firstSeasonObj.seasonNumber + " (" + firstSeasonObj.episodes.length + " episodes)")
+
+                            if (seasons.length > 1) {
+                                loadRemainingSeasonsInBackground(sId, seasons, 1)
+                            }
+                        })
                     } else {
-                        console.log("[DETAILS] Primary fetchEpisodes returned 0 items. Trying fetchSeasons fallback...")
-                        // Fallback: Fetch seasons first, then episodes per season
-                        AppData.fetchSeasons(sId, function(seasons) {
-                            if (seasons && seasons.length > 0) {
-                                seasonsList = seasons
-                                var list = []
-                                var pendingCount = seasons.length
-                                for (var i = 0; i < seasons.length; i++) {
-                                    (function(sObj, idx) {
-                                        AppData.fetchEpisodes(sId, sObj.id, function(eps) {
-                                            list[idx] = {
-                                                id: sObj.id,
-                                                seasonNumber: sObj.seasonNumber || (idx + 1),
-                                                title: sObj.title || ("Season " + (idx + 1)),
-                                                episodes: (eps && eps.length > 0) ? eps : [],
-                                                childCount: (eps && eps.length > 0) ? eps.length : (sObj.childCount || 0)
-                                            }
-                                            pendingCount--
-                                            if (pendingCount <= 0) {
-                                                var cleanList = []
-                                                for (var k = 0; k < list.length; k++) {
-                                                    if (list[k]) cleanList.push(list[k])
-                                                }
-                                                seasonsWithEpisodes = cleanList
-                                            }
-                                        })
-                                    })(seasons[i], i)
-                                }
+                        // Fallback to bulk episode fetch
+                        AppData.fetchEpisodes(sId, "", function(allEps) {
+                            if (detailsView.getSeriesId() !== sId) return
+                            if (allEps && allEps.length > 0) {
+                                episodesList = allEps
+                                seasonsWithEpisodes = groupEpisodesBySeason(allEps)
                             } else {
-                                console.log("[DETAILS] fetchSeasons returned 0 items. Loading demo seasons...")
                                 loadDemoSeasons()
                             }
                         })
                     }
                 })
             } else {
-                console.log("[DETAILS] Series ID is empty. Loading demo seasons...")
                 loadDemoSeasons()
             }
         } else if (isEpisodeItem && sId !== "") {
             var seasonIdToFetch = item.seasonId || ""
             AppData.fetchEpisodes(sId, seasonIdToFetch, function(episodes) {
+                if (detailsView.getSeriesId() !== sId) return
                 if (episodes && episodes.length > 0) {
                     seasonsWithEpisodes = groupEpisodesBySeason(episodes)
                 } else {
@@ -308,6 +351,8 @@ Item {
             source: (detailsView.item && (detailsView.item.backdropUrl || detailsView.item.posterUrl)) ? (detailsView.item.backdropUrl || detailsView.item.posterUrl) : ""
             fillMode: Image.PreserveAspectCrop
             opacity: 0.28
+            asynchronous: true
+            cache: true
         }
 
         Rectangle {
@@ -383,6 +428,8 @@ Item {
                         source: (detailsView.item && (detailsView.item.posterUrl || detailsView.item.backdropUrl)) ? (detailsView.item.posterUrl || detailsView.item.backdropUrl) : ""
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
+                        asynchronous: true
+                        cache: true
                     }
                 }
 
@@ -465,6 +512,7 @@ Item {
                             font.pixelSize: 17
                             font.bold: true
                             color: "#fbbf24"
+                            visible: AppData.isRatingVisible(detailsView.item)
                         }
 
                         Text {
@@ -815,6 +863,8 @@ Item {
                                 source: detailsView.nextUpEpisode ? (detailsView.nextUpEpisode.thumbUrl || detailsView.nextUpEpisode.backdropUrl || detailsView.nextUpEpisode.posterUrl) : ""
                                 fillMode: Image.PreserveAspectCrop
                                 smooth: true
+                                asynchronous: true
+                                cache: true
                             }
 
                             // Centered Play Button Overlay Button
@@ -1047,6 +1097,8 @@ Item {
                                         source: modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl
                                         fillMode: Image.PreserveAspectCrop
                                         smooth: true
+                                        asynchronous: true
+                                        cache: true
                                     }
 
                                     // Centered Play Button Overlay Button

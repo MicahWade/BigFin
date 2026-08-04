@@ -219,6 +219,8 @@ Kirigami.ScrollablePage {
                                         anchors.fill: parent
                                         source: model.posterUrl
                                         fillMode: Image.PreserveAspectCrop
+                                        asynchronous: true
+                                        cache: true
                                     }
 
                                     // Rating Badge
@@ -230,6 +232,7 @@ Kirigami.ScrollablePage {
                                         height: 22
                                         radius: 4
                                         color: "#cc0f1424"
+                                        visible: AppData.isRatingVisible(model)
 
                                         Text {
                                             anchors.centerIn: parent

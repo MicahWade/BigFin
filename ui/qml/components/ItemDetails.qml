@@ -95,6 +95,7 @@ Kirigami.ScrollablePage {
                             font.pixelSize: 18
                             font.bold: true
                             color: "#ffc107"
+                            visible: AppData.isRatingVisible(item)
                         }
 
                         Text {

@@ -85,7 +85,7 @@ Item {
     // Clean Master Category Data Model
     readonly property var masterCategories: [
         { id: 0, title: "Network & Server Settings", desc: "Target server host URL, saved sessions, auto-discovery, SSL certificate bypass, timeout", icon: "assets/icons/logo.svg", itemCount: 5 },
-        { id: 1, title: "Display & Startup Settings", desc: "Default startup view, theme palette, diagnostic HUD, navigation speed, season navigation", icon: "assets/icons/home.svg", itemCount: 6 },
+        { id: 1, title: "Display & Startup Settings", desc: "Default startup view, theme palette, diagnostic HUD, navigation speed, season navigation, ratings", icon: "assets/icons/home.svg", itemCount: 8 },
         { id: 2, title: "Video Playback & Bitrate Settings", desc: "Home/remote bitrate, HEVC/AV1 direct play, transcode limit, resume", icon: "assets/icons/play.svg", itemCount: 6 },
         { id: 3, title: "Hardware GPU Acceleration", desc: "libmpv video renderer engine, VAAPI / NVDEC decoder, AFR mode", icon: "assets/icons/tv.svg", itemCount: 4 },
         { id: 4, title: "Audio Devices & Passthrough", desc: "HDMI passthrough, surround sound, default audio track, DRC night mode", icon: "assets/icons/info.svg", itemCount: 5 },
@@ -578,7 +578,9 @@ Item {
             if (itemIdx === 2) return "10-Foot TV Design Theme"
             if (itemIdx === 3) return "Diagnostic HUD Overlay"
             if (itemIdx === 4) return "D-Pad TV Navigation Speed"
-            return "Season Navigation Jumps to Start"
+            if (itemIdx === 5) return "Season Navigation Jumps to Start"
+            if (itemIdx === 6) return "Enable Star Ratings Display"
+            return "Star Ratings Media Filter"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return "Home Network Bitrate Limit"
@@ -630,7 +632,9 @@ Item {
             if (itemIdx === 2) return "Select theme (Midnight OLED Dark, Cyberpunk Neon, Deep Ocean)"
             if (itemIdx === 3) return "Show active focus and key input HUD overlay (Press 'D')"
             if (itemIdx === 4) return "D-Pad arrow key repeat speed for 10-foot TV remotes"
-            return "When moving up/down between season rows, jump to Episode 1 instead of preserving previous episode index"
+            if (itemIdx === 5) return "When moving up/down between season rows, jump to Episode 1 instead of preserving previous episode index"
+            if (itemIdx === 6) return "Enable or disable star rating badges on media titles across Bigfin"
+            return "Select which media categories (Movies & TV, Movies Only, TV Only, All) display star ratings"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return "Maximum bitrate limit before Jellyfin server transcodes stream"
@@ -657,7 +661,9 @@ Item {
             if (itemIdx === 2) return themeStyles[themeStyleIdx]
             if (itemIdx === 3) return diagnosticHudEnabled ? "ENABLED" : "DISABLED"
             if (itemIdx === 4) return navSpeeds[navSpeedIdx]
-            return seasonNavModes[settingsView.seasonNavModeIdx]
+            if (itemIdx === 5) return seasonNavModes[settingsView.seasonNavModeIdx]
+            if (itemIdx === 6) return AppData.showRatings ? "ENABLED" : "DISABLED"
+            return AppData.ratingsCategoryOptions[AppData.ratingsCategoryIdx]
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return homeBitrates[homeBitrateIdx]
@@ -712,10 +718,12 @@ Item {
             }
             else if (itemIdx === 3) diagnosticHudEnabled = !diagnosticHudEnabled
             else if (itemIdx === 4) navSpeedIdx = (navSpeedIdx + 1) % navSpeeds.length
-            else {
+            else if (itemIdx === 5) {
                 settingsView.seasonNavModeIdx = (settingsView.seasonNavModeIdx + 1) % seasonNavModes.length
                 AppData.seasonNavModeIdx = settingsView.seasonNavModeIdx
             }
+            else if (itemIdx === 6) AppData.showRatings = !AppData.showRatings
+            else AppData.ratingsCategoryIdx = (AppData.ratingsCategoryIdx + 1) % AppData.ratingsCategoryOptions.length
         }
         else if (catIdx === 2) {
             if (itemIdx === 0) homeBitrateIdx = (homeBitrateIdx + 1) % homeBitrates.length

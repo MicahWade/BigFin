@@ -167,6 +167,7 @@ Item {
                                 height: 22
                                 radius: 4
                                 color: "#cc0f172a"
+                                visible: AppData.isRatingVisible(modelData)
 
                                 Text {
                                     anchors.centerIn: parent
@@ -210,10 +211,17 @@ Item {
 
                     Keys.onUpPressed: function(event) {
                         var columns = Math.max(1, Math.floor(searchResultsGrid.width / searchResultsGrid.cellWidth))
+                        if (columns <= 0) columns = 1
                         if (index < columns) {
                             searchInput.forceActiveFocus()
-                            event.accepted = true
+                        } else {
+                            var targetIdx = index - columns
+                            if (targetIdx >= 0) {
+                                searchResultsGrid.currentIndex = targetIdx
+                                if (searchResultsGrid.currentItem) searchResultsGrid.currentItem.forceActiveFocus()
+                            }
                         }
+                        event.accepted = true
                     }
 
                     Keys.onLeftPressed: function(event) {
