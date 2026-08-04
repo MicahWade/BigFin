@@ -154,7 +154,7 @@ Item {
                             }
 
                             Text {
-                                text: AppData.isConnectedToLiveServer ? "Your Jellyfin server connected, but no movies, TV series, or music were returned. Check library permissions on your server." : (AppData.connectionError ? AppData.connectionError : "Unable to reach your Jellyfin server. Please check connection settings.")
+                                text: AppData.isConnectedToLiveServer ? "Your Jellyfin server connected, but no movies, shows, or music were returned. Check library permissions on your server." : (AppData.connectionError ? AppData.connectionError : "Unable to reach your Jellyfin server. Please check connection settings.")
                                 font.pixelSize: 14
                                 color: AppData.isConnectedToLiveServer ? "#94a3b8" : "#fca5a5"
                                 wrapMode: Text.WordWrap

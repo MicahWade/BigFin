@@ -689,7 +689,7 @@ Item {
                                 }
                                 var y = detailsView.item.year || "2024"
                                 var d = detailsView.item.duration || "22m"
-                                var typeStr = detailsView.isSeries ? "TV Series" : "Movie"
+                                var typeStr = detailsView.isSeries ? "Show" : "Movie"
                                 return y + " • " + d + " • " + typeStr
                             }
                             font.pixelSize: 15

@@ -33,8 +33,8 @@ Item {
     property int seasonNavModeIdx: 0
     property bool seasonNavGoesToStart: seasonNavModeIdx === 0 || seasonNavModeIdx === 2
     property bool showRatings: true
-    property int ratingsCategoryIdx: 0 // 0: Movies & TV Series, 1: Movies Only, 2: TV Series Only, 3: All Media Types
-    readonly property var ratingsCategoryOptions: ["Movies & TV Series", "Movies Only", "TV Series Only", "All Media Types"]
+    property int ratingsCategoryIdx: 0 // 0: Movies & Shows, 1: Movies Only, 2: Shows Only, 3: All Media Types
+    readonly property var ratingsCategoryOptions: ["Movies & Shows", "Movies Only", "Shows Only", "All Media Types"]
 
     function isRatingVisible(item) {
         if (!showRatings) return false
@@ -210,7 +210,7 @@ Item {
         var items = [
             { id: "home", title: "Home", icon: "assets/icons/home.svg" },
             { id: "movies", title: "Movies", icon: "assets/icons/movies.svg" },
-            { id: "tvshows", title: "TV Series", icon: "assets/icons/tv.svg" },
+            { id: "tvshows", title: "Shows", icon: "assets/icons/tv.svg" },
             { id: "music", title: "Music", icon: "assets/icons/music.svg" }
         ]
         if (favoritesList && favoritesList.length > 0) {

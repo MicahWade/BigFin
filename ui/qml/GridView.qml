@@ -66,7 +66,7 @@ Item {
             spacing: 20
 
             Text {
-                text: categoryFilter === "movies" ? "Movies Library" : (categoryFilter === "tvshows" ? "TV Series Library" : (categoryFilter === "music" ? "Music Library" : "Favorites"))
+                text: categoryFilter === "movies" ? "Movies Library" : (categoryFilter === "tvshows" ? "Shows Library" : (categoryFilter === "music" ? "Music Library" : "Favorites"))
                 font.pixelSize: 28
                 font.bold: true
                 color: "#ffffff"
