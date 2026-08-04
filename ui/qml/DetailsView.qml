@@ -875,6 +875,10 @@ Item {
                         highlightRangeMode: ListView.ApplyRange
                         preferredHighlightBegin: 0
                         preferredHighlightEnd: width - 280
+                        highlightMoveDuration: 75
+                        highlightResizeDuration: 75
+                        maximumFlickVelocity: 6000
+                        flickDeceleration: 8000
 
                         delegate: Rectangle {
                             id: epSwimCard
@@ -1032,6 +1036,18 @@ Item {
                                 if (index === 0) {
                                     detailsView.requestSidebarFocus()
                                     event.accepted = true
+                                } else if (index > 0) {
+                                    seasonEpListView.currentIndex = index - 1
+                                    if (seasonEpListView.currentItem) seasonEpListView.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < seasonEpListView.count - 1) {
+                                    seasonEpListView.currentIndex = index + 1
+                                    if (seasonEpListView.currentItem) seasonEpListView.currentItem.forceActiveFocus()
+                                    event.accepted = true
                                 }
                             }
                         }
@@ -1062,6 +1078,13 @@ Item {
                     clip: false
                     focus: true
                     model: detailsView.item ? detailsView.item.people : []
+                    highlightRangeMode: ListView.ApplyRange
+                    preferredHighlightBegin: 0
+                    preferredHighlightEnd: width - 120
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
 
                     delegate: Item {
                         id: castDelegateItem
@@ -1143,6 +1166,18 @@ Item {
                             Keys.onLeftPressed: function(event) {
                                 if (index === 0) {
                                     detailsView.requestSidebarFocus()
+                                    event.accepted = true
+                                } else if (index > 0) {
+                                    castListView.currentIndex = index - 1
+                                    if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < castListView.count - 1) {
+                                    castListView.currentIndex = index + 1
+                                    if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
                                     event.accepted = true
                                 }
                             }

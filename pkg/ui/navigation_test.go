@@ -247,3 +247,40 @@ func TestQMLGlobalFocusRecoveryNet(t *testing.T) {
 		t.Errorf("Main.qml does not invoke moveFocusToView() for focus recovery!")
 	}
 }
+
+// TestQMLEpisodeCarouselNavigationAndPerformance verifies that episode and media carousels in DetailsView.qml
+// and HomeView.qml implement snappy animation parameters and full Left/Right arrow navigation.
+func TestQMLEpisodeCarouselNavigationAndPerformance(t *testing.T) {
+	detailsQmlPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	content, err := os.ReadFile(detailsQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+
+	detailsContent := string(content)
+
+	if !strings.Contains(detailsContent, "highlightMoveDuration: 75") {
+		t.Errorf("DetailsView.qml missing snappy highlightMoveDuration for episode carousel!")
+	}
+
+	if !strings.Contains(detailsContent, "seasonEpListView.currentIndex = index - 1") {
+		t.Errorf("DetailsView.qml missing Left arrow navigation handling for episode carousel index > 0!")
+	}
+
+	if !strings.Contains(detailsContent, "seasonEpListView.currentIndex = index + 1") {
+		t.Errorf("DetailsView.qml missing Right arrow navigation handling for episode carousel!")
+	}
+
+	homeQmlPath := filepath.Join("..", "..", "ui", "qml", "HomeView.qml")
+	homeContentBytes, err := os.ReadFile(homeQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read HomeView.qml: %v", err)
+	}
+
+	homeContent := string(homeContentBytes)
+
+	if !strings.Contains(homeContent, "continueWatchingList.currentIndex = index - 1") {
+		t.Errorf("HomeView.qml missing Left arrow navigation handling for continue watching carousel!")
+	}
+}
+

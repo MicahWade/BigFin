@@ -153,6 +153,10 @@ Item {
                     clip: false
                     focus: true
                     keyNavigationWraps: false
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
 
                     model: AppData.continueWatching
 
@@ -314,6 +318,18 @@ Item {
                                 if (index === 0) {
                                     homeView.requestSidebarFocus()
                                     event.accepted = true
+                                } else if (index > 0) {
+                                    continueWatchingList.currentIndex = index - 1
+                                    if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < continueWatchingList.count - 1) {
+                                    continueWatchingList.currentIndex = index + 1
+                                    if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus()
+                                    event.accepted = true
                                 }
                             }
                         }
@@ -357,6 +373,10 @@ Item {
                     clip: false
                     focus: true
                     keyNavigationWraps: false
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
 
                     model: AppData.recentlyAddedMovies.length > 0 ? AppData.recentlyAddedMovies : AppData.moviesList
 
@@ -483,6 +503,18 @@ Item {
                                 if (index === 0) {
                                     homeView.requestSidebarFocus()
                                     event.accepted = true
+                                } else if (index > 0) {
+                                    moviesList.currentIndex = index - 1
+                                    if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < moviesList.count - 1) {
+                                    moviesList.currentIndex = index + 1
+                                    if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus()
+                                    event.accepted = true
                                 }
                             }
                         }
@@ -526,6 +558,10 @@ Item {
                     clip: false
                     focus: true
                     keyNavigationWraps: false
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
 
                     model: AppData.recentlyAddedMusic.length > 0 ? AppData.recentlyAddedMusic : AppData.musicList
 
@@ -636,6 +672,18 @@ Item {
                                 if (index === 0) {
                                     homeView.requestSidebarFocus()
                                     event.accepted = true
+                                } else if (index > 0) {
+                                    musicList.currentIndex = index - 1
+                                    if (musicList.currentItem) musicList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < musicList.count - 1) {
+                                    musicList.currentIndex = index + 1
+                                    if (musicList.currentItem) musicList.currentItem.forceActiveFocus()
+                                    event.accepted = true
                                 }
                             }
                         }
@@ -679,6 +727,10 @@ Item {
                     clip: false
                     focus: true
                     keyNavigationWraps: false
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
 
                     model: (AppData.recentlyAddedShows && AppData.recentlyAddedShows.length > 0) ? AppData.recentlyAddedShows : AppData.tvShowsList
 
@@ -782,6 +834,18 @@ Item {
                             Keys.onLeftPressed: function(event) {
                                 if (index === 0) {
                                     homeView.requestSidebarFocus()
+                                    event.accepted = true
+                                } else if (index > 0) {
+                                    tvList.currentIndex = index - 1
+                                    if (tvList.currentItem) tvList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < tvList.count - 1) {
+                                    tvList.currentIndex = index + 1
+                                    if (tvList.currentItem) tvList.currentItem.forceActiveFocus()
                                     event.accepted = true
                                 }
                             }
