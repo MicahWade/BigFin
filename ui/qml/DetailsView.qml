@@ -107,9 +107,6 @@ Item {
             if (ud.Played === true) return true
             if (ud.PlayedPercentage && ud.PlayedPercentage > 0) return true
             if (ud.PlaybackPositionTicks && ud.PlaybackPositionTicks > 0) return true
-            if (ud.UnplayedItemCount !== undefined && item.recursiveItemCount !== undefined && item.recursiveItemCount > 0) {
-                if (ud.UnplayedItemCount < item.recursiveItemCount) return true
-            }
         }
 
         // 2. Check loaded episodes in seasonsWithEpisodes or episodesList
@@ -140,7 +137,8 @@ Item {
             var nEp = nextUpEpisode
             if (nEp.isPlayed === true || (nEp.progress && nEp.progress > 0)) return true
             if (nEp.rawData && nEp.rawData.UserData) {
-                if (nEp.rawData.UserData.Played === true || (nEp.rawData.UserData.PlayedPercentage && nEp.rawData.UserData.PlayedPercentage > 0) || (nEp.rawData.UserData.PlaybackPositionTicks && nEp.rawData.UserData.PlaybackPositionTicks > 0)) {
+                var nuUd = nEp.rawData.UserData
+                if (nuUd.Played === true || (nuUd.PlayedPercentage && nuUd.PlayedPercentage > 0) || (nuUd.PlaybackPositionTicks && nuUd.PlaybackPositionTicks > 0)) {
                     return true
                 }
             }
