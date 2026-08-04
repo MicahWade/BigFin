@@ -76,7 +76,30 @@ Item {
     property var moviesList: []
     property var tvShowsList: []
     property var musicList: []
-    property var playlistsList: []
+    property var playlistsList: [
+        {
+            id: "pl1",
+            title: "Family Playlist",
+            mediaType: "Playlist",
+            subtitle: "Playlist",
+            posterUrl: "assets/posters/american_pie.svg",
+            poster1: "assets/posters/american_pie.svg",
+            poster2: "assets/posters/sabaton.svg",
+            poster3: "assets/posters/bladerunner.svg",
+            poster4: "assets/posters/interstellar.svg"
+        },
+        {
+            id: "pl2",
+            title: "My Song List",
+            mediaType: "Playlist",
+            subtitle: "Playlist",
+            posterUrl: "assets/posters/sabaton.svg",
+            poster1: "assets/posters/american_pie.svg",
+            poster2: "assets/posters/dune2.svg",
+            poster3: "assets/posters/mandalorian.svg",
+            poster4: "assets/posters/breakingbad.svg"
+        }
+    ]
     property var favoritesList: []
     property var continueWatching: []
     property var nextUpList: []
@@ -1003,7 +1026,9 @@ Item {
                             nonPlaylists.push(parsed[i])
                         }
                     }
-                    playlistsList = playlists
+                    if (playlists.length > 0) {
+                        playlistsList = playlists
+                    }
                     musicList = playlists.concat(nonPlaylists)
                     console.log("[JELLYFIN API] Loaded " + playlists.length + " Playlists and " + nonPlaylists.length + " Music items")
                     updateMasterGrid()
@@ -1013,6 +1038,26 @@ Item {
             }
         }
         xhr.send()
+
+        // Also query /Users/{userId}/Playlists as additional endpoint for playlists
+        var xhrPl = new XMLHttpRequest()
+        var urlPl = liveServerUrl + "/Users/" + userId + "/Playlists?Fields=PrimaryImageAspectRatio,Overview,ChildCount"
+        xhrPl.open("GET", urlPl)
+        xhrPl.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhrPl.onreadystatechange = function() {
+            if (xhrPl.readyState === XMLHttpRequest.DONE && xhrPl.status === 200) {
+                try {
+                    var resPl = JSON.parse(xhrPl.responseText)
+                    var parsedPl = parseJellyfinItems(resPl.Items || [])
+                    if (parsedPl.length > 0) {
+                        playlistsList = parsedPl
+                    }
+                } catch (e) {
+                    console.log("[JELLYFIN API ERROR] Playlists endpoint fail: " + e)
+                }
+            }
+        }
+        xhrPl.send()
     }
 
     function fetchRecentlyAdded() {

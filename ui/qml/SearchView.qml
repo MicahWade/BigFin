@@ -100,6 +100,17 @@ Item {
 
             model: searchInput.text.length > 1 ? AppData.searchResults : AppData.mediaGrid
 
+            Keys.onLeftPressed: function(event) {
+                var columns = Math.max(1, Math.floor(searchResultsGrid.width / searchResultsGrid.cellWidth))
+                if (currentIndex <= 0 || columns <= 0 || currentIndex % columns === 0) {
+                    searchView.requestSidebarFocus()
+                } else {
+                    currentIndex = currentIndex - 1
+                    if (currentItem) currentItem.forceActiveFocus()
+                }
+                event.accepted = true
+            }
+
             delegate: Item {
                 width: searchResultsGrid.cellWidth
                 height: searchResultsGrid.cellHeight
@@ -207,10 +218,13 @@ Item {
 
                     Keys.onLeftPressed: function(event) {
                         var columns = Math.max(1, Math.floor(searchResultsGrid.width / searchResultsGrid.cellWidth))
-                        if (index % columns === 0) {
+                        if (index <= 0 || columns <= 0 || index % columns === 0) {
                             searchView.requestSidebarFocus()
-                            event.accepted = true
+                        } else {
+                            searchResultsGrid.currentIndex = index - 1
+                            if (searchResultsGrid.currentItem) searchResultsGrid.currentItem.forceActiveFocus()
                         }
+                        event.accepted = true
                     }
                 }
             }

@@ -10,7 +10,7 @@ Item {
     signal detailsRequested(var item)
     signal requestSidebarFocus()
 
-    property var defaultFocusItem: (AppData.continueWatching.length > 0 ? continueWatchingList : (moviesList.count > 0 ? moviesList : (musicList.count > 0 ? musicList : tvList)))
+    property var defaultFocusItem: (AppData.continueWatching && AppData.continueWatching.length > 0 ? continueWatchingList : ((AppData.nextUpList && AppData.nextUpList.length > 0) ? nextUpList : (moviesList.count > 0 ? moviesList : (musicList.count > 0 ? musicList : tvList))))
     property var lastFocusedItem: null
 
     function restoreFocus() {
@@ -27,30 +27,51 @@ Item {
         return false
     }
 
-    function navigateDownFrom(currentSection) {
+    function focusTargetList(targetList, preferredIdx) {
+        if (!targetList || targetList.count <= 0) return false
+        var targetIdx = Math.min(preferredIdx !== undefined ? preferredIdx : 0, targetList.count - 1)
+        targetList.currentIndex = targetIdx
+        targetList.forceActiveFocus()
+        if (targetList.currentItem) targetList.currentItem.forceActiveFocus()
+        return true
+    }
+
+    function navigateDownFrom(currentSection, currentIdx) {
+        var idx = currentIdx !== undefined ? currentIdx : 0
         if (currentSection === "cw") {
-            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
-            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
-            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+            if (focusTargetList(nextUpList, idx)) return true
+            if (focusTargetList(moviesList, idx)) return true
+            if (focusTargetList(musicList, idx)) return true
+            if (focusTargetList(tvList, idx)) return true
+        } else if (currentSection === "nextup") {
+            if (focusTargetList(moviesList, idx)) return true
+            if (focusTargetList(musicList, idx)) return true
+            if (focusTargetList(tvList, idx)) return true
         } else if (currentSection === "movies") {
-            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
-            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+            if (focusTargetList(musicList, idx)) return true
+            if (focusTargetList(tvList, idx)) return true
         } else if (currentSection === "music") {
-            if (tvList.count > 0) { tvList.forceActiveFocus(); if (tvList.currentItem) tvList.currentItem.forceActiveFocus(); return true; }
+            if (focusTargetList(tvList, idx)) return true
         }
         return false
     }
 
-    function navigateUpFrom(currentSection) {
-        if (currentSection === "movies") {
-            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+    function navigateUpFrom(currentSection, currentIdx) {
+        var idx = currentIdx !== undefined ? currentIdx : 0
+        if (currentSection === "nextup") {
+            if (focusTargetList(continueWatchingList, idx)) return true
+        } else if (currentSection === "movies") {
+            if (focusTargetList(nextUpList, idx)) return true
+            if (focusTargetList(continueWatchingList, idx)) return true
         } else if (currentSection === "music") {
-            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
-            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+            if (focusTargetList(moviesList, idx)) return true
+            if (focusTargetList(nextUpList, idx)) return true
+            if (focusTargetList(continueWatchingList, idx)) return true
         } else if (currentSection === "tv") {
-            if (musicList.count > 0) { musicList.forceActiveFocus(); if (musicList.currentItem) musicList.currentItem.forceActiveFocus(); return true; }
-            if (moviesList.count > 0) { moviesList.forceActiveFocus(); if (moviesList.currentItem) moviesList.currentItem.forceActiveFocus(); return true; }
-            if (AppData.continueWatching.length > 0) { continueWatchingList.forceActiveFocus(); if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus(); return true; }
+            if (focusTargetList(musicList, idx)) return true
+            if (focusTargetList(moviesList, idx)) return true
+            if (focusTargetList(nextUpList, idx)) return true
+            if (focusTargetList(continueWatchingList, idx)) return true
         }
         homeView.requestSidebarFocus()
         return true
@@ -193,6 +214,16 @@ Item {
                             mainFlickable.contentY = 0
                             if (currentItem) currentItem.forceActiveFocus()
                         }
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                        if (currentIndex <= 0) {
+                            homeView.requestSidebarFocus()
+                        } else {
+                            currentIndex = currentIndex - 1
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
                     }
 
                     delegate: Item {
@@ -339,7 +370,7 @@ Item {
                             }
 
                             Keys.onDownPressed: function(event) {
-                                navigateDownFrom("cw")
+                                navigateDownFrom("cw", index)
                                 event.accepted = true
                             }
 
@@ -358,6 +389,222 @@ Item {
                                 if (index < continueWatchingList.count - 1) {
                                     continueWatchingList.currentIndex = index + 1
                                     if (continueWatchingList.currentItem) continueWatchingList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ==========================================
+            // 1.5 NEXT UP / NEXT EPISODE ROW (UNDER CONTINUE WATCHING)
+            // ==========================================
+            ColumnLayout {
+                id: nextUpContainer
+                Layout.fillWidth: true
+                Layout.leftMargin: 48
+                Layout.rightMargin: 48
+                spacing: 14
+                visible: AppData.nextUpList && AppData.nextUpList.length > 0
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "Next Up"
+                        font.pixelSize: 24
+                        font.bold: true
+                        color: nextUpList.activeFocus || nextUpContainer.activeFocus ? AppData.currentTheme.accent : "#f8fafc"
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: (AppData.nextUpList ? AppData.nextUpList.length : 0) + " Episodes"
+                        font.pixelSize: 13
+                        color: "#94a3b8"
+                    }
+                }
+
+                ListView {
+                    id: nextUpList
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 240
+                    orientation: ListView.Horizontal
+                    spacing: 20
+                    clip: false
+                    focus: true
+                    keyNavigationWraps: false
+                    highlightMoveDuration: 75
+                    highlightResizeDuration: 75
+                    maximumFlickVelocity: 6000
+                    flickDeceleration: 8000
+
+                    model: AppData.nextUpList
+
+                    onActiveFocusChanged: {
+                        if (activeFocus) {
+                            mainFlickable.contentY = 320
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                        if (currentIndex <= 0) {
+                            homeView.requestSidebarFocus()
+                        } else {
+                            currentIndex = currentIndex - 1
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
+                    }
+
+                    delegate: Item {
+                        id: nuDelegateItem
+                        width: 320
+                        height: 230
+                        z: nuCard.activeFocus ? 100 : 1
+                        focus: true
+
+                        onActiveFocusChanged: {
+                            if (activeFocus) {
+                                nuCard.forceActiveFocus()
+                            }
+                        }
+
+                        Rectangle {
+                            id: nuCard
+                            width: 310
+                            height: 220
+                            anchors.centerIn: parent
+                            radius: 12
+                            color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
+                            border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
+                            border.width: activeFocus ? 4 : 1
+                            focus: true
+
+                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            onActiveFocusChanged: {
+                                if (activeFocus) {
+                                    homeView.lastFocusedItem = nuCard
+                                    homeView.ensureVisible(nuCard)
+                                    nextUpList.currentIndex = index
+                                }
+                            }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 8
+
+                                // Thumbnail Container
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    radius: 8
+                                    color: "#020617"
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: modelData.backdropUrl || modelData.posterUrl || modelData.thumbUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                        asynchronous: true
+                                    }
+
+                                    // Play Overlay Icon
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 44
+                                        height: 44
+                                        radius: 22
+                                        color: nuCard.activeFocus ? AppData.currentTheme.accent : "#cc0f172a"
+
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 20
+                                            height: 20
+                                            source: "assets/icons/play.svg"
+                                            fillMode: Image.PreserveAspectFit
+                                        }
+                                    }
+
+                                    // Next Up Pill
+                                    Rectangle {
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 8
+                                        height: 22
+                                        width: 76
+                                        radius: 4
+                                        color: "#d06366f1"
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "NEXT UP"
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                            color: "#ffffff"
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: modelData.seriesName || modelData.title
+                                    font.pixelSize: 15
+                                    font.bold: true
+                                    color: nuCard.activeFocus ? "#ffffff" : "#e2e8f0"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: modelData.epCode ? (modelData.epCode + (modelData.episodeName ? (" - " + modelData.episodeName) : "")) : (modelData.subtitle || modelData.title)
+                                    font.pixelSize: 12
+                                    color: nuCard.activeFocus ? "#e2e8f0" : "#94a3b8"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    nextUpList.currentIndex = index
+                                    nuCard.forceActiveFocus()
+                                    homeView.playRequested(modelData)
+                                }
+                            }
+
+                            Keys.onReturnPressed: homeView.playRequested(modelData)
+                            Keys.onSpacePressed: homeView.detailsRequested(modelData)
+
+                            Keys.onUpPressed: function(event) {
+                                navigateUpFrom("nextup", index)
+                                event.accepted = true
+                            }
+
+                            Keys.onDownPressed: function(event) {
+                                navigateDownFrom("nextup", index)
+                                event.accepted = true
+                            }
+
+                            Keys.onLeftPressed: function(event) {
+                                if (index === 0) {
+                                    homeView.requestSidebarFocus()
+                                    event.accepted = true
+                                } else if (index > 0) {
+                                    nextUpList.currentIndex = index - 1
+                                    if (nextUpList.currentItem) nextUpList.currentItem.forceActiveFocus()
+                                    event.accepted = true
+                                }
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                if (index < nextUpList.count - 1) {
+                                    nextUpList.currentIndex = index + 1
+                                    if (nextUpList.currentItem) nextUpList.currentItem.forceActiveFocus()
                                     event.accepted = true
                                 }
                             }
@@ -414,6 +661,16 @@ Item {
                             mainFlickable.contentY = 140
                             if (currentItem) currentItem.forceActiveFocus()
                         }
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                        if (currentIndex <= 0) {
+                            homeView.requestSidebarFocus()
+                        } else {
+                            currentIndex = currentIndex - 1
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
                     }
 
                     delegate: Item {
@@ -520,12 +777,12 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                navigateUpFrom("movies")
+                                navigateUpFrom("movies", index)
                                 event.accepted = true
                             }
 
                             Keys.onDownPressed: function(event) {
-                                navigateDownFrom("movies")
+                                navigateDownFrom("movies", index)
                                 event.accepted = true
                             }
 
@@ -597,9 +854,19 @@ Item {
 
                     onActiveFocusChanged: {
                         if (activeFocus) {
-                            mainFlickable.contentY = 380
+                            mainFlickable.contentY = 480
                             if (currentItem) currentItem.forceActiveFocus()
                         }
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                        if (currentIndex <= 0) {
+                            homeView.requestSidebarFocus()
+                        } else {
+                            currentIndex = currentIndex - 1
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
                     }
 
                     delegate: Item {
@@ -690,12 +957,12 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                navigateUpFrom("music")
+                                navigateUpFrom("music", index)
                                 event.accepted = true
                             }
 
                             Keys.onDownPressed: function(event) {
-                                navigateDownFrom("music")
+                                navigateDownFrom("music", index)
                                 event.accepted = true
                             }
 
@@ -752,7 +1019,7 @@ Item {
                 ListView {
                     id: tvList
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 290
+                    Layout.preferredHeight: 250
                     orientation: ListView.Horizontal
                     spacing: 22
                     clip: false
@@ -772,9 +1039,19 @@ Item {
                         }
                     }
 
+                    Keys.onLeftPressed: function(event) {
+                        if (currentIndex <= 0) {
+                            homeView.requestSidebarFocus()
+                        } else {
+                            currentIndex = currentIndex - 1
+                            if (currentItem) currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
+                    }
+
                     delegate: Item {
-                        width: 180
-                        height: 280
+                        width: 290
+                        height: 240
                         z: tvCard.activeFocus ? 100 : 1
                         focus: true
 
@@ -786,18 +1063,19 @@ Item {
 
                         Rectangle {
                             id: tvCard
-                            width: 172
-                            height: 270
+                            width: 280
+                            height: 230
                             anchors.centerIn: parent
                             radius: 12
                             color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
                             border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
                             border.width: activeFocus ? 4 : 1
-                            scale: activeFocus ? 1.08 : 1.0
+                            scale: activeFocus ? 1.03 : 1.0
                             focus: true
 
-                            Behavior on scale { NumberAnimation { duration: 120 } }
+                            Behavior on scale { NumberAnimation { duration: 120; easing.type: "OutCubic" } }
                             Behavior on border.color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: 120 } }
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
@@ -809,9 +1087,10 @@ Item {
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 8
+                                anchors.margins: 10
                                 spacing: 8
 
+                                // 16:9 Thumbnail Image Container (Matches attached screenshot)
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
@@ -821,15 +1100,54 @@ Item {
 
                                     Image {
                                         anchors.fill: parent
-                                        source: modelData.posterUrl
+                                        source: modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl
                                         fillMode: Image.PreserveAspectCrop
                                         smooth: true
                                         asynchronous: true
                                     }
+
+                                    // Centered Play Button Overlay (Matches attached screenshot)
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 46
+                                        height: 46
+                                        radius: 23
+                                        color: "#cc0f172a"
+                                        border.color: "#ffffff"
+                                        border.width: 1
+
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 20
+                                            height: 20
+                                            source: "assets/icons/play.svg"
+                                            fillMode: Image.PreserveAspectFit
+                                        }
+                                    }
+
+                                    // Watched Checkmark Badge at Top Right (Matches attached screenshot)
+                                    Rectangle {
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 6
+                                        width: 24
+                                        height: 24
+                                        radius: 12
+                                        color: "#0284c7"
+                                        visible: modelData.isPlayed || false
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "✓"
+                                            font.pixelSize: 13
+                                            font.bold: true
+                                            color: "#ffffff"
+                                        }
+                                    }
                                 }
 
                                 Text {
-                                    text: modelData.title
+                                    text: (modelData.episodeNumber ? (modelData.episodeNumber + ". ") : "") + (modelData.episodeName || modelData.title)
                                     font.pixelSize: 14
                                     font.bold: true
                                     color: tvCard.activeFocus ? "#ffffff" : "#e2e8f0"
@@ -838,9 +1156,9 @@ Item {
                                 }
 
                                 Text {
-                                    text: modelData.seasonsEpisodesStr || modelData.subtitle || "Series"
+                                    text: modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)
                                     font.pixelSize: 12
-                                    color: "#94a3b8"
+                                    color: tvCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -859,27 +1177,26 @@ Item {
                             Keys.onSpacePressed: homeView.detailsRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
-                                navigateUpFrom("tv")
+                                navigateUpFrom("tv", index)
                                 event.accepted = true
                             }
 
                             Keys.onLeftPressed: function(event) {
-                                if (index === 0) {
+                                if (index <= 0) {
                                     homeView.requestSidebarFocus()
-                                    event.accepted = true
-                                } else if (index > 0) {
+                                } else {
                                     tvList.currentIndex = index - 1
                                     if (tvList.currentItem) tvList.currentItem.forceActiveFocus()
-                                    event.accepted = true
                                 }
+                                event.accepted = true
                             }
 
                             Keys.onRightPressed: function(event) {
                                 if (index < tvList.count - 1) {
                                     tvList.currentIndex = index + 1
                                     if (tvList.currentItem) tvList.currentItem.forceActiveFocus()
-                                    event.accepted = true
                                 }
+                                event.accepted = true
                             }
                         }
                     }

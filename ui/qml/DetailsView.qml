@@ -110,6 +110,10 @@ Item {
     }
 
     function navigateDownFromHero() {
+        if (nextUpCardContainer && nextUpCardContainer.visible && nextUpCard) {
+            nextUpCard.forceActiveFocus()
+            return true
+        }
         if (seasonsRepeater && seasonsRepeater.count > 0) {
             var firstSeason = seasonsRepeater.itemAt(0)
             if (firstSeason && firstSeason.focusCurrentOrFirstCard) {
@@ -754,9 +758,10 @@ Item {
             }
 
             // ==========================================
-            // NEXT UP SECTION (TV SHOW VIEW ONLY)
+            // NEXT UP SECTION (TV SHOW VIEW ONLY - MATCHES EPISODE CARDS BELOW)
             // ==========================================
             ColumnLayout {
+                id: nextUpCardContainer
                 visible: detailsView.isSeries && detailsView.nextUpEpisode !== null
                 Layout.fillWidth: true
                 Layout.leftMargin: 48
@@ -767,22 +772,37 @@ Item {
                     text: "Next Up"
                     font.pixelSize: 20
                     font.bold: true
-                    color: "#ffffff"
+                    color: nextUpCard.activeFocus ? AppData.currentTheme.accent : "#ffffff"
                 }
 
                 Rectangle {
-                    width: 240
-                    height: 170
+                    id: nextUpCard
+                    width: 280
+                    height: 240
                     radius: 12
-                    color: nextUpCardMouse.containsMouse ? AppData.currentTheme.focusCard : "#090d16"
-                    border.color: "#1e293b"
-                    border.width: 1
+                    color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
+                    border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
+                    border.width: activeFocus ? 4 : 1
+                    scale: activeFocus ? 1.03 : 1.0
+                    focus: true
+
+                    Behavior on scale { NumberAnimation { duration: 120; easing.type: "OutCubic" } }
+                    Behavior on border.color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    onActiveFocusChanged: {
+                        if (activeFocus) {
+                            detailsView.lastFocusedItem = nextUpCard
+                            detailsView.ensureVisible(nextUpCard)
+                        }
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 6
+                        anchors.margins: 10
+                        spacing: 8
 
+                        // 16:9 Thumbnail Image Card (identical to show episodes below)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -792,31 +812,74 @@ Item {
 
                             Image {
                                 anchors.fill: parent
-                                source: detailsView.nextUpEpisode ? (detailsView.nextUpEpisode.backdropUrl || detailsView.nextUpEpisode.posterUrl) : ""
+                                source: detailsView.nextUpEpisode ? (detailsView.nextUpEpisode.thumbUrl || detailsView.nextUpEpisode.backdropUrl || detailsView.nextUpEpisode.posterUrl) : ""
                                 fillMode: Image.PreserveAspectCrop
+                                smooth: true
                             }
 
+                            // Centered Play Button Overlay Button
                             Rectangle {
+                                id: nextUpCenterPlayBtn
                                 anchors.centerIn: parent
-                                width: 36
-                                height: 36
-                                radius: 18
-                                color: "#cc0f172a"
+                                width: 46
+                                height: 46
+                                radius: 23
+                                color: nextUpPlayMouse.containsMouse ? AppData.currentTheme.accent : "#cc0f172a"
+                                border.color: "#ffffff"
+                                border.width: 1
+                                z: 10
+
                                 Image {
                                     anchors.centerIn: parent
-                                    width: 16
-                                    height: 16
+                                    width: 20
+                                    height: 20
                                     source: "assets/icons/play.svg"
                                     fillMode: Image.PreserveAspectFit
+                                }
+
+                                MouseArea {
+                                    id: nextUpPlayMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        detailsView.playRequested(detailsView.nextUpEpisode)
+                                    }
+                                }
+                            }
+
+                            // Next Up Pill Badge (Top Right)
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                height: 22
+                                width: 72
+                                radius: 4
+                                color: "#cc6366f1"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "NEXT UP"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    color: "#ffffff"
                                 }
                             }
                         }
 
                         Text {
-                            text: detailsView.nextUpEpisode ? (detailsView.nextUpEpisode.subtitle || detailsView.nextUpEpisode.title) : ""
-                            font.pixelSize: 12
+                            text: detailsView.nextUpEpisode ? ((detailsView.nextUpEpisode.episodeNumber ? (detailsView.nextUpEpisode.episodeNumber + ". ") : "") + (detailsView.nextUpEpisode.episodeName || detailsView.nextUpEpisode.title)) : ""
+                            font.pixelSize: 14
                             font.bold: true
                             color: "#ffffff"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: detailsView.nextUpEpisode ? detailsView.getEpisodeSubtitle(detailsView.nextUpEpisode) : ""
+                            font.pixelSize: 12
+                            color: "#94a3b8"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
@@ -826,7 +889,37 @@ Item {
                         id: nextUpCardMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: detailsView.playRequested(detailsView.nextUpEpisode)
+                        z: 1
+                        onClicked: {
+                            nextUpCard.forceActiveFocus()
+                            detailsView.item = detailsView.nextUpEpisode
+                        }
+                    }
+
+                    Keys.onReturnPressed: detailsView.item = detailsView.nextUpEpisode
+                    Keys.onSpacePressed: detailsView.playRequested(detailsView.nextUpEpisode)
+
+                    Keys.onUpPressed: function(event) {
+                        playBtn.forceActiveFocus()
+                        event.accepted = true
+                    }
+
+                    Keys.onDownPressed: function(event) {
+                        if (seasonsRepeater && seasonsRepeater.count > 0) {
+                            var firstSeason = seasonsRepeater.itemAt(0)
+                            if (firstSeason && firstSeason.focusCurrentOrFirstCard) {
+                                firstSeason.focusCurrentOrFirstCard(0)
+                            }
+                        } else if (castListView.visible && castListView.count > 0) {
+                            castListView.forceActiveFocus()
+                            if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+                        }
+                        event.accepted = true
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                        detailsView.requestSidebarFocus()
+                        event.accepted = true
                     }
                 }
             }
@@ -1040,8 +1133,12 @@ Item {
                                 var epIdx = index
                                 var rIdx = seasonSwimlaneCol.seasonRowIndex
                                 if (rIdx === 0) {
-                                    playBtn.forceActiveFocus()
-                                    mainFlickable.contentY = 0
+                                    if (nextUpCardContainer && nextUpCardContainer.visible && nextUpCard) {
+                                        nextUpCard.forceActiveFocus()
+                                    } else {
+                                        playBtn.forceActiveFocus()
+                                        mainFlickable.contentY = 0
+                                    }
                                 } else if (rIdx > 0) {
                                     var prevItem = seasonsRepeater.itemAt(rIdx - 1)
                                     if (prevItem && prevItem.focusCurrentOrFirstCard) {
