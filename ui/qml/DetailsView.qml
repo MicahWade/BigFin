@@ -95,6 +95,152 @@ Item {
     property var nextUpEpisode: null
     property var activeSeason: null
 
+    function getHasWatchedShow() {
+        if (!isSeries) return false
+        if (!item) return false
+
+        // 1. Check item (series level) properties
+        if (item.isPlayed === true) return true
+        if (item.progress && item.progress > 0) return true
+        if (item.rawData && item.rawData.UserData) {
+            var ud = item.rawData.UserData
+            if (ud.Played === true) return true
+            if (ud.PlayedPercentage && ud.PlayedPercentage > 0) return true
+            if (ud.PlaybackPositionTicks && ud.PlaybackPositionTicks > 0) return true
+            if (ud.UnplayedItemCount !== undefined && item.recursiveItemCount !== undefined && item.recursiveItemCount > 0) {
+                if (ud.UnplayedItemCount < item.recursiveItemCount) return true
+            }
+        }
+
+        // 2. Check loaded episodes in seasonsWithEpisodes or episodesList
+        var allEps = []
+        if (episodesList && episodesList.length > 0) {
+            allEps = episodesList
+        } else if (seasonsWithEpisodes) {
+            for (var s = 0; s < seasonsWithEpisodes.length; s++) {
+                if (seasonsWithEpisodes[s].episodes) {
+                    allEps = allEps.concat(seasonsWithEpisodes[s].episodes)
+                }
+            }
+        }
+        for (var i = 0; i < allEps.length; i++) {
+            var ep = allEps[i]
+            if (ep.isPlayed === true) return true
+            if (ep.progress && ep.progress > 0) return true
+            if (ep.rawData && ep.rawData.UserData) {
+                var epUd = ep.rawData.UserData
+                if (epUd.Played === true || (epUd.PlayedPercentage && epUd.PlayedPercentage > 0) || (epUd.PlaybackPositionTicks && epUd.PlaybackPositionTicks > 0)) {
+                    return true
+                }
+            }
+        }
+
+        // 3. Check nextUpEpisode if available: if next episode is S2 or S1E2+, user has watched previous episodes!
+        if (nextUpEpisode) {
+            var nEp = nextUpEpisode
+            if (nEp.isPlayed === true || (nEp.progress && nEp.progress > 0)) return true
+            if (nEp.rawData && nEp.rawData.UserData) {
+                if (nEp.rawData.UserData.Played === true || (nEp.rawData.UserData.PlayedPercentage && nEp.rawData.UserData.PlayedPercentage > 0) || (nEp.rawData.UserData.PlaybackPositionTicks && nEp.rawData.UserData.PlaybackPositionTicks > 0)) {
+                    return true
+                }
+            }
+            var sNum = parseInt(nEp.seasonNumber || (nEp.rawData ? nEp.rawData.ParentIndexNumber : 1)) || 1
+            var eNum = parseInt(nEp.episodeNumber || (nEp.rawData ? nEp.rawData.IndexNumber : 1)) || 1
+            if (sNum > 1 || eNum > 1) return true
+        }
+
+        return false
+    }
+
+    property bool hasWatchedShow: {
+        var _dummy1 = item
+        var _dummy2 = seasonsWithEpisodes
+        var _dummy3 = episodesList
+        var _dummy4 = nextUpEpisode
+        return getHasWatchedShow()
+    }
+
+    function getFirstEpisode() {
+        if (!seasonsWithEpisodes || seasonsWithEpisodes.length === 0) return null
+        for (var i = 0; i < seasonsWithEpisodes.length; i++) {
+            var s = seasonsWithEpisodes[i]
+            if (s.episodes && s.episodes.length > 0) {
+                return s.episodes[0]
+            }
+        }
+        return null
+    }
+
+    function getInProgressEpisode() {
+        if (nextUpEpisode) {
+            var nEp = nextUpEpisode
+            if ((nEp.progress && nEp.progress > 0 && nEp.progress < 0.95) ||
+                (nEp.rawData && nEp.rawData.UserData && nEp.rawData.UserData.PlaybackPositionTicks > 0 && !nEp.rawData.UserData.Played)) {
+                return nEp
+            }
+        }
+        if (seasonsWithEpisodes) {
+            for (var i = 0; i < seasonsWithEpisodes.length; i++) {
+                var s = seasonsWithEpisodes[i]
+                if (s.episodes) {
+                    for (var j = 0; j < s.episodes.length; j++) {
+                        var ep = s.episodes[j]
+                        if ((ep.progress && ep.progress > 0 && ep.progress < 0.95) ||
+                            (ep.rawData && ep.rawData.UserData && ep.rawData.UserData.PlaybackPositionTicks > 0 && !ep.rawData.UserData.Played)) {
+                            return ep
+                        }
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    function getShowPlayOption() {
+        if (!isSeries) return "play"
+        var inProg = getInProgressEpisode()
+        if (inProg !== null) return "continue"
+        if (hasWatchedShow && nextUpEpisode !== null) return "next"
+        return "start"
+    }
+
+    property string showPlayOption: {
+        var _dummy1 = item
+        var _dummy2 = seasonsWithEpisodes
+        var _dummy3 = episodesList
+        var _dummy4 = nextUpEpisode
+        var _dummy5 = hasWatchedShow
+        return getShowPlayOption()
+    }
+
+    function getShowPlayTarget() {
+        if (!isSeries) return item
+        var opt = showPlayOption
+        if (opt === "continue") {
+            var inProg = getInProgressEpisode()
+            if (inProg) return inProg
+        }
+        if (opt === "next") {
+            if (nextUpEpisode) return nextUpEpisode
+        }
+        var firstEp = getFirstEpisode()
+        if (firstEp) return firstEp
+        return item
+    }
+
+    function getPlayButtonText() {
+        if (!isSeries) {
+            if (item && ((item.progress && item.progress > 0) || (item.rawData && item.rawData.UserData && item.rawData.UserData.PlaybackPositionTicks > 0))) {
+                return "Continue"
+            }
+            return "Play"
+        }
+        var opt = showPlayOption
+        if (opt === "continue") return "Continue"
+        if (opt === "next") return "Next Episode"
+        return "Start"
+    }
+
     function ensureVisible(targetItem) {
         if (!targetItem) return
         var mapped = targetItem.mapToItem(mainDetailsColumn, 0, 0)
@@ -539,10 +685,10 @@ Item {
                         spacing: 14
                         Layout.topMargin: 6
 
-                        // Play Button
+                        // Single Play Button for Show (options: Start, Continue, or Next Episode)
                         Rectangle {
                             id: playBtn
-                            width: 150
+                            width: detailsView.isSeries ? 170 : 150
                             height: 48
                             radius: 10
                             color: activeFocus ? AppData.currentTheme.focusCard : "#0f172a"
@@ -560,53 +706,15 @@ Item {
                                     source: "assets/icons/play.svg"
                                     fillMode: Image.PreserveAspectFit
                                 }
-                                Text { text: detailsView.isSeries ? "Play Show" : "Play"; font.pixelSize: 15; font.bold: true; color: "#ffffff" }
+                                Text { text: detailsView.getPlayButtonText(); font.pixelSize: 15; font.bold: true; color: "#ffffff" }
                             }
 
-                            MouseArea { onClicked: detailsView.playRequested(detailsView.item) }
-                            Keys.onReturnPressed: detailsView.playRequested(detailsView.item)
-                            Keys.onSpacePressed: detailsView.playRequested(detailsView.item)
+                            MouseArea { onClicked: detailsView.playRequested(detailsView.getShowPlayTarget()) }
+                            Keys.onReturnPressed: detailsView.playRequested(detailsView.getShowPlayTarget())
+                            Keys.onSpacePressed: detailsView.playRequested(detailsView.getShowPlayTarget())
                             Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) { detailsView.requestSidebarFocus(); event.accepted = true }
-                            Keys.onRightPressed: function(event) {
-                                if (nextUpBtn.visible) nextUpBtn.forceActiveFocus()
-                                else playedBtn.forceActiveFocus()
-                                event.accepted = true
-                            }
-                        }
-
-                        // Play Next Episode Button (Series Only)
-                        Rectangle {
-                            id: nextUpBtn
-                            visible: detailsView.isSeries && detailsView.nextUpEpisode !== null
-                            width: 180
-                            height: 48
-                            radius: 10
-                            color: activeFocus ? AppData.currentTheme.focusCard : "#1e1b4b"
-                            border.color: activeFocus ? AppData.currentTheme.accent : "#6366f1"
-                            border.width: activeFocus ? 4 : 2
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 8
-                                Text { text: "▶"; font.pixelSize: 14; color: "#818cf8" }
-                                Text {
-                                    text: detailsView.nextUpEpisode ? ("Play Next (" + (detailsView.nextUpEpisode.title || "Episode") + ")") : "Play Next"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                    color: "#ffffff"
-                                    elide: Text.ElideRight
-                                    Layout.maximumWidth: 130
-                                }
-                            }
-
-                            MouseArea { onClicked: detailsView.playRequested(detailsView.nextUpEpisode) }
-                            Keys.onReturnPressed: detailsView.playRequested(detailsView.nextUpEpisode)
-                            Keys.onSpacePressed: detailsView.playRequested(detailsView.nextUpEpisode)
-                            Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
-                            Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
-                            Keys.onLeftPressed: function(event) { playBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onRightPressed: function(event) { playedBtn.forceActiveFocus(); event.accepted = true }
                         }
 
@@ -639,11 +747,7 @@ Item {
                             Keys.onSpacePressed: playedBtn.isPlayed = !playedBtn.isPlayed
                             Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
-                            Keys.onLeftPressed: function(event) {
-                                if (nextUpBtn.visible) nextUpBtn.forceActiveFocus()
-                                else playBtn.forceActiveFocus()
-                                event.accepted = true
-                            }
+                            Keys.onLeftPressed: function(event) { playBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onRightPressed: function(event) { favBtn.forceActiveFocus(); event.accepted = true }
                         }
 
@@ -806,11 +910,11 @@ Item {
             }
 
             // ==========================================
-            // NEXT UP SECTION (TV SHOW VIEW ONLY - MATCHES EPISODE CARDS BELOW)
+            // NEXT UP SECTION (TV SHOW VIEW ONLY - DISPLAYED ONLY IF USER HAS WATCHED THE SHOW)
             // ==========================================
             ColumnLayout {
                 id: nextUpCardContainer
-                visible: detailsView.isSeries && detailsView.nextUpEpisode !== null
+                visible: detailsView.isSeries && detailsView.hasWatchedShow && detailsView.nextUpEpisode !== null
                 Layout.fillWidth: true
                 Layout.leftMargin: 48
                 Layout.rightMargin: 48

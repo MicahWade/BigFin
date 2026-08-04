@@ -486,6 +486,48 @@ func TestQMLTTLCacheAndDynamicLoading(t *testing.T) {
 	}
 }
 
+// TestShowPlayButtonAndNextUpVisibility verifies that DetailsView.qml implements:
+// 1. Hiding the Next Up section when the user has not watched a show (hasWatchedShow check).
+// 2. Consolidating to a single play button for a show with dynamic Start, Continue, or Next Episode options.
+func TestShowPlayButtonAndNextUpVisibility(t *testing.T) {
+	detailsPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	detailsBytes, err := os.ReadFile(detailsPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+	detailsContent := string(detailsBytes)
+
+	// 1. Next Up section must require hasWatchedShow
+	if !strings.Contains(detailsContent, "hasWatchedShow") {
+		t.Errorf("DetailsView.qml missing hasWatchedShow property for checking watched status!")
+	}
+	if !strings.Contains(detailsContent, "visible: detailsView.isSeries && detailsView.hasWatchedShow") {
+		t.Errorf("DetailsView.qml nextUpCardContainer must verify hasWatchedShow before displaying Next Up!")
+	}
+
+	// 2. Options: start, continue, next episode logic
+	requiredMethods := []string{
+		"getHasWatchedShow",
+		"getShowPlayOption",
+		"getShowPlayTarget",
+		"getPlayButtonText",
+		"Start",
+		"Continue",
+		"Next Episode",
+	}
+	for _, m := range requiredMethods {
+		if !strings.Contains(detailsContent, m) {
+			t.Errorf("DetailsView.qml missing required show play option logic/label: %s", m)
+		}
+	}
+
+	// 3. Must be a single play button (nextUpBtn removed)
+	if strings.Contains(detailsContent, "id: nextUpBtn") {
+		t.Errorf("DetailsView.qml still contains separate nextUpBtn! Must consolidate to single play button.")
+	}
+}
+
+
 
 
 
