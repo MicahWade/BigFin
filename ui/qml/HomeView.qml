@@ -56,6 +56,19 @@ Item {
         return true
     }
 
+    function ensureVisible(targetItem) {
+        if (!targetItem) return
+        var mapped = targetItem.mapToItem(mainColumn, 0, 0)
+        var itemY = mapped.y
+        var itemH = targetItem.height
+        var viewH = mainFlickable.height
+        if (viewH <= 0) return
+
+        var targetY = (itemY + itemH / 2) - (viewH / 2)
+        var maxY = Math.max(0, mainFlickable.contentHeight - viewH)
+        mainFlickable.contentY = Math.max(0, Math.min(maxY, targetY))
+    }
+
     Flickable {
         id: mainFlickable
         anchors.fill: parent
@@ -212,7 +225,7 @@ Item {
                             onActiveFocusChanged: {
                                 if (activeFocus) {
                                     homeView.lastFocusedItem = cwCard
-                                    mainFlickable.contentY = 0
+                                    homeView.ensureVisible(cwCard)
                                     continueWatchingList.currentIndex = index
                                 }
                             }
@@ -433,7 +446,7 @@ Item {
                             onActiveFocusChanged: {
                                 if (activeFocus) {
                                     homeView.lastFocusedItem = movieCard
-                                    mainFlickable.contentY = 140
+                                    homeView.ensureVisible(movieCard)
                                     moviesList.currentIndex = index
                                 }
                             }
@@ -619,7 +632,7 @@ Item {
                             onActiveFocusChanged: {
                                 if (activeFocus) {
                                     homeView.lastFocusedItem = musicCard
-                                    mainFlickable.contentY = 380
+                                    homeView.ensureVisible(musicCard)
                                     musicList.currentIndex = index
                                 }
                             }
@@ -789,7 +802,7 @@ Item {
                             onActiveFocusChanged: {
                                 if (activeFocus) {
                                     homeView.lastFocusedItem = tvCard
-                                    mainFlickable.contentY = 620
+                                    homeView.ensureVisible(tvCard)
                                     tvList.currentIndex = index
                                 }
                             }

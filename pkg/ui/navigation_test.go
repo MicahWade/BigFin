@@ -301,6 +301,26 @@ func TestQMLEpisodeCarouselNavigationAndPerformance(t *testing.T) {
 	if !strings.Contains(homeContent, "function restoreFocus()") {
 		t.Errorf("HomeView.qml missing restoreFocus() function to resume focus position!")
 	}
+
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+
+	appDataContent := string(appDataBytes)
+	if !strings.Contains(appDataContent, "seasonNavGoesToStart: true") {
+		t.Errorf("AppData.qml missing default true seasonNavGoesToStart property!")
+	}
+
+	if !strings.Contains(detailsContent, "seasonNavGoesToStart") {
+		t.Errorf("DetailsView.qml missing seasonNavGoesToStart check in vertical season navigation!")
+	}
+
+	if !strings.Contains(detailsContent, "targetY = (itemY + itemH / 2) - (viewH / 2)") {
+		t.Errorf("DetailsView.qml missing middle-row vertical centering math in ensureVisible!")
+	}
 }
+
 
 

@@ -83,7 +83,7 @@ Item {
     // Clean Master Category Data Model
     readonly property var masterCategories: [
         { id: 0, title: "Network & Server Settings", desc: "Target server host URL, saved sessions, auto-discovery, SSL certificate bypass, timeout", icon: "assets/icons/logo.svg", itemCount: 5 },
-        { id: 1, title: "Display & Startup Settings", desc: "Default startup view, theme palette, diagnostic HUD, navigation speed", icon: "assets/icons/home.svg", itemCount: 5 },
+        { id: 1, title: "Display & Startup Settings", desc: "Default startup view, theme palette, diagnostic HUD, navigation speed, season navigation", icon: "assets/icons/home.svg", itemCount: 6 },
         { id: 2, title: "Video Playback & Bitrate Settings", desc: "Home/remote bitrate, HEVC/AV1 direct play, transcode limit, resume", icon: "assets/icons/play.svg", itemCount: 6 },
         { id: 3, title: "Hardware GPU Acceleration", desc: "libmpv video renderer engine, VAAPI / NVDEC decoder, AFR mode", icon: "assets/icons/tv.svg", itemCount: 4 },
         { id: 4, title: "Audio Devices & Passthrough", desc: "HDMI passthrough, surround sound, default audio track, DRC night mode", icon: "assets/icons/info.svg", itemCount: 5 },
@@ -573,7 +573,8 @@ Item {
             if (itemIdx === 1) return "Enable Custom Start Screen"
             if (itemIdx === 2) return "10-Foot TV Design Theme"
             if (itemIdx === 3) return "Diagnostic HUD Overlay"
-            return "D-Pad TV Navigation Speed"
+            if (itemIdx === 4) return "D-Pad TV Navigation Speed"
+            return "Season Navigation Jumps to Start"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return "Home Network Bitrate Limit"
@@ -624,7 +625,8 @@ Item {
             if (itemIdx === 1) return "Open directly into your chosen startup screen instead of Home"
             if (itemIdx === 2) return "Select theme (Midnight OLED Dark, Cyberpunk Neon, Deep Ocean)"
             if (itemIdx === 3) return "Show active focus and key input HUD overlay (Press 'D')"
-            return "D-Pad arrow key repeat speed for 10-foot TV remotes"
+            if (itemIdx === 4) return "D-Pad arrow key repeat speed for 10-foot TV remotes"
+            return "When moving up/down between season rows, jump to Episode 1 instead of preserving previous episode index"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return "Maximum bitrate limit before Jellyfin server transcodes stream"
@@ -650,7 +652,8 @@ Item {
             if (itemIdx === 1) return startupViewEnabled ? "ENABLED" : "DISABLED"
             if (itemIdx === 2) return themeStyles[themeStyleIdx]
             if (itemIdx === 3) return diagnosticHudEnabled ? "ENABLED" : "DISABLED"
-            return navSpeeds[navSpeedIdx]
+            if (itemIdx === 4) return navSpeeds[navSpeedIdx]
+            return AppData.seasonNavGoesToStart ? "ENABLED (EPISODE 1)" : "DISABLED (PRESERVE INDEX)"
         }
         if (catIdx === 2) {
             if (itemIdx === 0) return homeBitrates[homeBitrateIdx]
@@ -704,7 +707,8 @@ Item {
                 AppData.activeThemeIndex = themeStyleIdx
             }
             else if (itemIdx === 3) diagnosticHudEnabled = !diagnosticHudEnabled
-            else navSpeedIdx = (navSpeedIdx + 1) % navSpeeds.length
+            else if (itemIdx === 4) navSpeedIdx = (navSpeedIdx + 1) % navSpeeds.length
+            else AppData.seasonNavGoesToStart = !AppData.seasonNavGoesToStart
         }
         else if (catIdx === 2) {
             if (itemIdx === 0) homeBitrateIdx = (homeBitrateIdx + 1) % homeBitrates.length

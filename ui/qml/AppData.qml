@@ -30,6 +30,7 @@ Item {
 
     // Active User Settings State
     property bool showEndsAtInSubtitle: false
+    property bool seasonNavGoesToStart: true
 
     // Saved Sessions State
     property var savedSessions: []

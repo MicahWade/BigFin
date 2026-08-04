@@ -100,14 +100,13 @@ Item {
         var mapped = targetItem.mapToItem(mainDetailsColumn, 0, 0)
         var itemY = mapped.y
         var itemH = targetItem.height
-        var currentY = mainFlickable.contentY
         var viewH = mainFlickable.height
-        
-        if (itemY < currentY + 40) {
-            mainFlickable.contentY = Math.max(0, itemY - 40)
-        } else if (itemY + itemH > currentY + viewH - 40) {
-            mainFlickable.contentY = Math.min(mainFlickable.contentHeight - viewH, itemY + itemH - viewH + 40)
-        }
+        if (viewH <= 0) return
+
+        // Keep the selected row centered vertically in the viewport
+        var targetY = (itemY + itemH / 2) - (viewH / 2)
+        var maxY = Math.max(0, mainFlickable.contentHeight - viewH)
+        mainFlickable.contentY = Math.max(0, Math.min(maxY, targetY))
     }
 
     function navigateDownFromHero() {
@@ -294,6 +293,10 @@ Item {
         contentWidth: width
         contentHeight: mainDetailsColumn.implicitHeight + 100
         clip: true
+
+        Behavior on contentY {
+            NumberAnimation { duration: 200; easing.type: "OutCubic" }
+        }
 
         // Backdrop Ambient Image
         Image {
@@ -852,8 +855,8 @@ Item {
 
                     function focusCurrentOrFirstCard(idx) {
                         seasonEpListView.forceActiveFocus()
-                        var targetIndex = Math.min(idx, seasonEpListView.count - 1)
-                        if (targetIndex >= 0) {
+                        var targetIndex = (AppData && AppData.seasonNavGoesToStart) ? 0 : Math.min(idx, seasonEpListView.count - 1)
+                        if (targetIndex >= 0 && targetIndex < seasonEpListView.count) {
                             seasonEpListView.currentIndex = targetIndex
                         }
                         if (seasonEpListView.currentItem) {
