@@ -132,7 +132,7 @@ Item {
             }
         }
 
-        // 3. Check nextUpEpisode if available: if next episode is S2 or S1E2+, user has watched previous episodes!
+        // 3. Check nextUpEpisode if available: only count it if the episode itself has actual play history
         if (nextUpEpisode) {
             var nEp = nextUpEpisode
             if (nEp.isPlayed === true || (nEp.progress && nEp.progress > 0)) return true
@@ -142,9 +142,9 @@ Item {
                     return true
                 }
             }
-            var sNum = parseInt(nEp.seasonNumber || (nEp.rawData ? nEp.rawData.ParentIndexNumber : 1)) || 1
-            var eNum = parseInt(nEp.episodeNumber || (nEp.rawData ? nEp.rawData.IndexNumber : 1)) || 1
-            if (sNum > 1 || eNum > 1) return true
+            // NOTE: We no longer infer hasWatched from the episode's season/episode number.
+            // Jellyfin's NextUp API can return episodes even when nothing has been watched
+            // (e.g., partial libraries with only later-season episodes), causing false positives.
         }
 
         return false
