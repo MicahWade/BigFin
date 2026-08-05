@@ -643,7 +643,7 @@ Item {
                 ListView {
                     id: moviesList
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 290
+                    Layout.preferredHeight: 315
                     orientation: ListView.Horizontal
                     spacing: 22
                     clip: false
@@ -675,7 +675,7 @@ Item {
 
                     delegate: Item {
                         width: 180
-                        height: 280
+                        height: 305
                         z: movieCard.activeFocus ? 100 : 1
                         focus: true
 
@@ -688,7 +688,7 @@ Item {
                         Rectangle {
                             id: movieCard
                             width: 172
-                            height: 270
+                            height: 295
                             anchors.centerIn: parent
                             radius: 12
                             color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
@@ -723,7 +723,9 @@ Item {
                                     Image {
                                         anchors.fill: parent
                                         source: modelData.posterUrl
-                                        fillMode: Image.PreserveAspectCrop
+                                        fillMode: Image.PreserveAspectFit
+                                        verticalAlignment: Image.AlignVCenter
+                                        horizontalAlignment: Image.AlignHCenter
                                         smooth: true
                                         asynchronous: true
                                     }
@@ -921,7 +923,9 @@ Item {
                                     Image {
                                         anchors.fill: parent
                                         source: modelData.posterUrl
-                                        fillMode: Image.PreserveAspectCrop
+                                        fillMode: Image.PreserveAspectFit
+                                        verticalAlignment: Image.AlignVCenter
+                                        horizontalAlignment: Image.AlignHCenter
                                         smooth: true
                                         asynchronous: true
                                     }
@@ -1020,7 +1024,7 @@ Item {
                 ListView {
                     id: tvList
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 250
+                    Layout.preferredHeight: 315
                     orientation: ListView.Horizontal
                     spacing: 22
                     clip: false
@@ -1051,8 +1055,8 @@ Item {
                     }
 
                     delegate: Item {
-                        width: 290
-                        height: 240
+                        width: 180
+                        height: 305
                         z: tvCard.activeFocus ? 100 : 1
                         focus: true
 
@@ -1064,19 +1068,18 @@ Item {
 
                         Rectangle {
                             id: tvCard
-                            width: 280
-                            height: 230
+                            width: 172
+                            height: 295
                             anchors.centerIn: parent
                             radius: 12
                             color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
                             border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
                             border.width: activeFocus ? 4 : 1
-                            scale: activeFocus ? 1.03 : 1.0
+                            scale: activeFocus ? 1.08 : 1.0
                             focus: true
 
-                            Behavior on scale { NumberAnimation { duration: 120; easing.type: "OutCubic" } }
+                            Behavior on scale { NumberAnimation { duration: 120 } }
                             Behavior on border.color { ColorAnimation { duration: 120 } }
-                            Behavior on color { ColorAnimation { duration: 120 } }
 
                             onActiveFocusChanged: {
                                 if (activeFocus) {
@@ -1088,10 +1091,9 @@ Item {
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 10
+                                anchors.margins: 8
                                 spacing: 8
 
-                                // 16:9 Thumbnail Image Container (Matches attached screenshot)
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
@@ -1101,54 +1103,36 @@ Item {
 
                                     Image {
                                         anchors.fill: parent
-                                        source: modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl
-                                        fillMode: Image.PreserveAspectCrop
+                                        source: modelData.posterUrl
+                                        fillMode: Image.PreserveAspectFit
+                                        verticalAlignment: Image.AlignVCenter
+                                        horizontalAlignment: Image.AlignHCenter
                                         smooth: true
                                         asynchronous: true
                                     }
 
-                                    // Centered Play Button Overlay (Matches attached screenshot)
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: 46
-                                        height: 46
-                                        radius: 23
-                                        color: "#cc0f172a"
-                                        border.color: "#ffffff"
-                                        border.width: 1
-
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 20
-                                            height: 20
-                                            source: "assets/icons/play.svg"
-                                            fillMode: Image.PreserveAspectFit
-                                        }
-                                    }
-
-                                    // Watched Checkmark Badge at Top Right (Matches attached screenshot)
                                     Rectangle {
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         anchors.margins: 6
-                                        width: 24
-                                        height: 24
-                                        radius: 12
-                                        color: "#0284c7"
-                                        visible: modelData.isPlayed || false
+                                        height: 20
+                                        width: 50
+                                        radius: 4
+                                        color: "#d00f172a"
+                                        visible: AppData.isRatingVisible(modelData)
 
                                         Text {
                                             anchors.centerIn: parent
-                                            text: "✓"
-                                            font.pixelSize: 13
+                                            text: "★ " + (modelData.rating || "8.5")
+                                            font.pixelSize: 10
                                             font.bold: true
-                                            color: "#ffffff"
+                                            color: "#fbbf24"
                                         }
                                     }
                                 }
 
                                 Text {
-                                    text: (modelData.episodeNumber ? (modelData.episodeNumber + ". ") : "") + (modelData.episodeName || modelData.title)
+                                    text: modelData.title || modelData.episodeName || "Show"
                                     font.pixelSize: 14
                                     font.bold: true
                                     color: tvCard.activeFocus ? "#ffffff" : "#e2e8f0"
@@ -1157,7 +1141,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)
+                                    text: modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year || "2024")
                                     font.pixelSize: 12
                                     color: tvCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                                     elide: Text.ElideRight

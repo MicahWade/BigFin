@@ -48,6 +48,15 @@ Item {
     readonly property bool isEpisode: itemType === "Episode"
     readonly property bool isSeries: itemType === "Series"
 
+    function getIsMusic() {
+        if (!item) return false
+        var t = item.mediaType || item.type || item.Type || (item.rawData ? (item.rawData.Type || item.rawData.mediaType) : "")
+        if (typeof t === "string") t = t.toLowerCase()
+        return (t === "musicalbum" || t === "playlist" || t === "audio" || t === "musicartist" || t === "music")
+    }
+
+    readonly property bool isMusic: getIsMusic()
+
     function getSeriesId() {
         if (!item) return ""
         var sid = item.id || item.Id || item.seriesId || item.SeriesId || (item.rawData ? (item.rawData.SeriesId || item.rawData.Id) : "")
@@ -579,7 +588,7 @@ Item {
                 // Left Poster Box
                 Rectangle {
                     Layout.preferredWidth: 300
-                    Layout.preferredHeight: 440
+                    Layout.preferredHeight: detailsView.isMusic ? 300 : 450
                     radius: 16
                     color: "#0f172a"
                     border.color: AppData.currentTheme.accent
@@ -589,7 +598,9 @@ Item {
                     Image {
                         anchors.fill: parent
                         source: (detailsView.item && (detailsView.item.posterUrl || detailsView.item.backdropUrl)) ? (detailsView.item.posterUrl || detailsView.item.backdropUrl) : ""
-                        fillMode: Image.PreserveAspectCrop
+                        fillMode: Image.PreserveAspectFit
+                        verticalAlignment: Image.AlignVCenter
+                        horizontalAlignment: Image.AlignHCenter
                         smooth: true
                         asynchronous: true
                         cache: true

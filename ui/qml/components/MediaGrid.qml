@@ -175,7 +175,7 @@ Kirigami.ScrollablePage {
                 ListView {
                     id: horizontalRow
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 330
+                    Layout.preferredHeight: 350
                     orientation: ListView.Horizontal
                     spacing: 20
                     clip: true
@@ -187,7 +187,7 @@ Kirigami.ScrollablePage {
                     delegate: Item {
                         id: posterCard
                         width: 200
-                        height: 310
+                        height: categoryRow.categoryKey === "music" ? 240 : 330
 
                         property bool isItemFocused: horizontalRow.activeFocus && horizontalRow.currentIndex === index
 
@@ -210,7 +210,8 @@ Kirigami.ScrollablePage {
                                 // Poster Image
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    Layout.fillHeight: true
+                                    Layout.preferredHeight: categoryRow.categoryKey === "music" ? 184 : undefined
+                                    Layout.fillHeight: categoryRow.categoryKey !== "music"
                                     radius: 8
                                     color: "#0a0c12"
                                     clip: true
@@ -218,7 +219,9 @@ Kirigami.ScrollablePage {
                                     Image {
                                         anchors.fill: parent
                                         source: model.posterUrl
-                                        fillMode: Image.PreserveAspectCrop
+                                        fillMode: Image.PreserveAspectFit
+                                        verticalAlignment: Image.AlignVCenter
+                                        horizontalAlignment: Image.AlignHCenter
                                         asynchronous: true
                                         cache: true
                                     }

@@ -54,7 +54,9 @@ Kirigami.ScrollablePage {
                     Image {
                         anchors.fill: parent
                         source: item ? item.posterUrl : ""
-                        fillMode: Image.PreserveAspectCrop
+                        fillMode: Image.PreserveAspectFit
+                        verticalAlignment: Image.AlignVCenter
+                        horizontalAlignment: Image.AlignHCenter
                     }
                 }
 

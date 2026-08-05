@@ -295,8 +295,8 @@ Item {
             id: mediaGridView
             Layout.fillWidth: true
             Layout.fillHeight: true
-            cellWidth: (categoryFilter === "tvshows") ? 290 : 210
-            cellHeight: (categoryFilter === "tvshows") ? 250 : 330
+            cellWidth: 210
+            cellHeight: categoryFilter === "music" ? 260 : 345
             clip: true
             focus: true
 
@@ -372,6 +372,8 @@ Item {
                 height: mediaGridView.cellHeight
                 focus: true
 
+                property bool isEpisodeItem: (modelData.mediaType === "Episode")
+                property bool isMusicItem: (categoryFilter === "music" || modelData.mediaType === "MusicAlbum" || modelData.mediaType === "Playlist" || modelData.mediaType === "Audio" || modelData.mediaType === "MusicArtist" || modelData.Type === "Playlist" || modelData.Type === "MusicAlbum")
                 property bool isShowItem: (categoryFilter === "tvshows" || modelData.mediaType === "Series" || modelData.mediaType === "series" || modelData.mediaType === "Episode" || modelData.mediaType === "TvProgram")
 
                 onActiveFocusChanged: {
@@ -382,8 +384,8 @@ Item {
 
                 Rectangle {
                     id: gridCard
-                    width: isShowItem ? 275 : 195
-                    height: isShowItem ? 235 : 315
+                    width: isEpisodeItem ? 275 : 195
+                    height: isMusicItem ? 245 : (isEpisodeItem ? 235 : 330)
                     anchors.centerIn: parent
                     radius: 12
                     color: activeFocus ? AppData.currentTheme.focusCard : "#0d1322"
@@ -407,24 +409,27 @@ Item {
                         anchors.margins: 10
                         spacing: 8
 
-                        // Thumbnail Container (16:9 for Shows, 2:3 Poster for Movies)
+                        // Thumbnail Container (1:1 Square for Music, 16:9 for Episodes, 2:3 Poster for Shows & Movies)
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
+                            Layout.preferredHeight: isMusicItem ? 175 : undefined
+                            Layout.fillHeight: !isMusicItem
                             radius: 8
                             color: "#020617"
                             clip: true
 
                             Image {
                                 anchors.fill: parent
-                                source: isShowItem ? (modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl) : modelData.posterUrl
-                                fillMode: Image.PreserveAspectCrop
+                                source: isEpisodeItem ? (modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl) : modelData.posterUrl
+                                fillMode: isEpisodeItem ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+                                verticalAlignment: Image.AlignVCenter
+                                horizontalAlignment: Image.AlignHCenter
                                 smooth: true
                                 asynchronous: true
                                 cache: true
                             }
 
-                            // Centered Play Button Overlay for TV Shows (Matches attached screenshot)
+                            // Centered Play Button Overlay for TV Episodes
                             Rectangle {
                                 id: showPlayOverlay
                                 anchors.centerIn: parent
@@ -434,7 +439,7 @@ Item {
                                 color: "#cc0f172a"
                                 border.color: "#ffffff"
                                 border.width: 1
-                                visible: isShowItem
+                                visible: isEpisodeItem
 
                                 Image {
                                     anchors.centerIn: parent

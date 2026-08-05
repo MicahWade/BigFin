@@ -93,7 +93,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             cellWidth: 210
-            cellHeight: 330
+            cellHeight: 345
             clip: true
             focus: true
             keyNavigationWraps: false
@@ -116,6 +116,8 @@ Item {
                 height: searchResultsGrid.cellHeight
                 focus: true
 
+                property bool isMusicItem: (modelData.mediaType === "MusicAlbum" || modelData.mediaType === "Playlist" || modelData.mediaType === "Audio" || modelData.mediaType === "MusicArtist" || modelData.Type === "Playlist" || modelData.Type === "MusicAlbum")
+
                 onActiveFocusChanged: {
                     if (activeFocus) {
                         searchCard.forceActiveFocus()
@@ -125,7 +127,7 @@ Item {
                 Rectangle {
                     id: searchCard
                     width: 195
-                    height: 315
+                    height: isMusicItem ? 245 : 330
                     anchors.centerIn: parent
                     radius: 12
                     color: activeFocus ? AppData.currentTheme.focusCard : "#0d1322"
@@ -148,7 +150,8 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
+                            Layout.preferredHeight: isMusicItem ? 179 : undefined
+                            Layout.fillHeight: !isMusicItem
                             radius: 8
                             color: "#020617"
                             clip: true
@@ -156,7 +159,12 @@ Item {
                             Image {
                                 anchors.fill: parent
                                 source: modelData.posterUrl
-                                fillMode: Image.PreserveAspectCrop
+                                fillMode: Image.PreserveAspectFit
+                                verticalAlignment: Image.AlignVCenter
+                                horizontalAlignment: Image.AlignHCenter
+                                smooth: true
+                                asynchronous: true
+                                cache: true
                             }
 
                             Rectangle {
