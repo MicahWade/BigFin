@@ -11,6 +11,7 @@ build:
 	@echo "==> Building Bigfin Go binaries..."
 	mkdir -p bin
 	$(GO) build -o bin/bigfin_app ./cmd/bigfin
+	cp bin/bigfin_app ./bigfin
 	$(GO) build -o bin/test_player_bin ./cmd/test_player
 
 ## test: Run Go unit tests

@@ -10,6 +10,7 @@ Item {
     signal requestSidebarFocus()
 
     property string categoryFilter: "movies"
+    property string musicSubFilter: "playlists"
     property bool playlistsExpanded: true
 
     onCategoryFilterChanged: {
@@ -17,38 +18,46 @@ Item {
     }
 
     property var playlistsList: {
-        if (AppData.playlistsList && AppData.playlistsList.length > 0) return AppData.playlistsList
+        var items = []
+        if (AppData.playlistsList && AppData.playlistsList.length > 0) {
+            for (var i = 0; i < AppData.playlistsList.length; i++) {
+                var item = AppData.playlistsList[i]
+                var pType = (item.playlistType || item.PlaylistMediaType || item.MediaType || "").toLowerCase()
+                var mType = (item.mediaType || item.Type || "").toLowerCase()
+                if (mType === "playlist" || pType === "playlist" || pType === "audio" || pType === "music" || pType !== "movie") {
+                    items.push(item)
+                }
+            }
+        }
+        if (items.length > 0) return items
+
         var rawMusic = AppData.musicList.length > 0 ? AppData.musicList : AppData.mediaGrid.filter(function(i){ return i.mediaType === "Playlist" || i.Type === "Playlist" })
         var pl = []
-        for (var i = 0; i < rawMusic.length; i++) {
-            if (rawMusic[i].mediaType === "Playlist" || rawMusic[i].Type === "Playlist") {
-                pl.push(rawMusic[i])
+        for (var k = 0; k < rawMusic.length; k++) {
+            if (rawMusic[k].mediaType === "Playlist" || rawMusic[k].Type === "Playlist") {
+                pl.push(rawMusic[k])
             }
         }
         if (pl.length > 0) return pl
+        if (AppData.isConnectedToLiveServer) return []
         return [
-            { id: "pl1", title: "Family Playlist", mediaType: "Playlist", subtitle: "Playlist", posterUrl: "assets/posters/american_pie.svg" },
-            { id: "pl2", title: "My Song List", mediaType: "Playlist", subtitle: "Playlist", posterUrl: "assets/posters/sabaton.svg" }
+            { id: "pl_s1", title: "Family Playlist", mediaType: "Playlist", playlistType: "Audio", subtitle: "12 Songs • Playlist", poster1: "assets/posters/american_pie.svg", poster2: "assets/posters/sabaton.svg", poster3: "assets/posters/bladerunner.svg", poster4: "assets/posters/interstellar.svg" },
+            { id: "pl_s2", title: "My Song List", mediaType: "Playlist", playlistType: "Audio", subtitle: "8 Songs • Playlist", poster1: "assets/posters/sabaton.svg", poster2: "assets/posters/dune2.svg", poster3: "assets/posters/mandalorian.svg", poster4: "assets/posters/breakingbad.svg" }
         ]
     }
     property alias defaultFocusItem: defaultFocusScope
 
     Item {
         id: defaultFocusScope
-        property var currentItem: (categoryFilter === "music" && playlistsExpanded && playlistsListView.count > 0) ? playlistsListView.currentItem : mediaGridView.currentItem
-        property int currentIndex: (categoryFilter === "music" && playlistsExpanded && playlistsListView.count > 0) ? playlistsListView.currentIndex : mediaGridView.currentIndex
-        property int count: (categoryFilter === "music" && playlistsExpanded && playlistsListView.count > 0) ? playlistsListView.count : mediaGridView.count
+        property var currentItem: mediaGridView.currentItem
+        property int currentIndex: mediaGridView.currentIndex
+        property int count: mediaGridView.count
 
         onActiveFocusChanged: {
             if (activeFocus) {
-                if (categoryFilter === "music" && playlistsExpanded && playlistsListView.count > 0) {
-                    playlistsListView.forceActiveFocus()
-                    if (playlistsListView.currentItem) playlistsListView.currentItem.forceActiveFocus()
-                } else {
-                    mediaGridView.forceActiveFocus()
-                    if (mediaGridView.currentIndex < 0 && mediaGridView.count > 0) mediaGridView.currentIndex = 0
-                    if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
-                }
+                mediaGridView.forceActiveFocus()
+                if (mediaGridView.currentIndex < 0 && mediaGridView.count > 0) mediaGridView.currentIndex = 0
+                if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
             }
         }
     }
@@ -75,219 +84,95 @@ Item {
             Item { Layout.fillWidth: true }
 
             Text {
-                text: (categoryFilter === "music" ? ((playlistsExpanded ? playlistsListView.count : 0) + mediaGridView.count) : mediaGridView.count) + " Items"
+                text: mediaGridView.count + " Items"
                 font.pixelSize: 14
                 color: "#94a3b8"
             }
         }
 
-        // Dedicated Playlists Row (Displayed at the top of Music Tab)
-        ColumnLayout {
-            id: playlistsContainer
+        // Music Sub-Category Filter Bar (Matches Official Jellyfin UI in Screenshot)
+        RowLayout {
+            id: musicSubTabBar
             Layout.fillWidth: true
-            spacing: 12
-            visible: categoryFilter === "music" && playlistsExpanded && gridView.playlistsList && gridView.playlistsList.length > 0
+            spacing: 20
+            visible: categoryFilter === "music"
 
-            Text {
-                text: "Playlists"
-                font.pixelSize: 20
-                font.bold: true
-                color: playlistsListView.activeFocus ? AppData.currentTheme.accent : "#f8fafc"
-            }
+            Repeater {
+                id: musicSubTabBarRepeater
+                model: [
+                    { id: "songs", name: "Songs" },
+                    { id: "artists", name: "Artists" },
+                    { id: "playlists", name: "Playlists" }
+                ]
 
-            ListView {
-                id: playlistsListView
-                Layout.fillWidth: true
-                Layout.preferredHeight: 240
-                orientation: ListView.Horizontal
-                spacing: 20
-                clip: false
-                focus: true
-                keyNavigationWraps: false
-
-                model: gridView.playlistsList
-
-                onActiveFocusChanged: {
-                    if (activeFocus && currentItem) {
-                        currentItem.forceActiveFocus()
-                    }
-                }
-
-                delegate: Item {
-                    width: 180
-                    height: 230
+                delegate: Rectangle {
+                    id: subTabBtn
+                    height: 52
+                    radius: 12
+                    implicitWidth: subTabText.implicitWidth + 48
+                    color: (gridView.musicSubFilter === modelData.id) ? (subTabBtn.activeFocus ? "#8b5cf6" : "#7c3aed") : (subTabBtn.activeFocus ? "#312e81" : "#1e1b4b")
+                    border.color: subTabBtn.activeFocus ? "#ffffff" : ((gridView.musicSubFilter === modelData.id) ? "#a855f7" : "#3730a3")
+                    border.width: subTabBtn.activeFocus ? 3 : 1
                     focus: true
 
-                    onActiveFocusChanged: {
-                        if (activeFocus) {
-                            plCard.forceActiveFocus()
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                    Text {
+                        id: subTabText
+                        anchors.centerIn: parent
+                        text: modelData.name
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: (gridView.musicSubFilter === modelData.id || subTabBtn.activeFocus) ? "#ffffff" : "#a5b4fc"
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            gridView.musicSubFilter = modelData.id
+                            subTabBtn.forceActiveFocus()
                         }
                     }
 
-                    Rectangle {
-                        id: plCard
-                        width: 170
-                        height: 220
-                        anchors.centerIn: parent
-                        radius: 12
-                        color: activeFocus ? AppData.currentTheme.focusCard : "#0d1322"
-                        border.color: activeFocus ? AppData.currentTheme.accent : "#6366f1"
-                        border.width: activeFocus ? 4 : 1
-                        focus: true
+                    Keys.onReturnPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onEnterPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onSelectPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onSpacePressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
 
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        onActiveFocusChanged: {
-                            if (activeFocus) {
-                                playlistsListView.currentIndex = index
-                            }
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 6
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 140
-                                radius: 8
-                                color: "#020617"
-                                clip: true
-
-                                Grid {
-                                    anchors.fill: parent
-                                    rows: 2
-                                    columns: 2
-                                    spacing: 1
-
-                                    Image {
-                                        width: parent.width / 2 - 0.5
-                                        height: parent.height / 2 - 0.5
-                                        source: modelData.poster1 || modelData.posterUrl || "assets/posters/american_pie.svg"
-                                        fillMode: Image.PreserveAspectCrop
-                                        smooth: true
-                                    }
-                                    Image {
-                                        width: parent.width / 2 - 0.5
-                                        height: parent.height / 2 - 0.5
-                                        source: modelData.poster2 || modelData.posterUrl || "assets/posters/sabaton.svg"
-                                        fillMode: Image.PreserveAspectCrop
-                                        smooth: true
-                                    }
-                                    Image {
-                                        width: parent.width / 2 - 0.5
-                                        height: parent.height / 2 - 0.5
-                                        source: modelData.poster3 || modelData.posterUrl || "assets/posters/bladerunner.svg"
-                                        fillMode: Image.PreserveAspectCrop
-                                        smooth: true
-                                    }
-                                    Image {
-                                        width: parent.width / 2 - 0.5
-                                        height: parent.height / 2 - 0.5
-                                        source: modelData.poster4 || modelData.posterUrl || "assets/posters/interstellar.svg"
-                                        fillMode: Image.PreserveAspectCrop
-                                        smooth: true
-                                    }
-                                }
-
-                                Rectangle {
-                                    anchors.top: parent.top
-                                    anchors.right: parent.right
-                                    anchors.margins: 6
-                                    width: 64
-                                    height: 20
-                                    radius: 4
-                                    color: "#cc6366f1"
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "PLAYLIST"
-                                        font.pixelSize: 9
-                                        font.bold: true
-                                        color: "#ffffff"
-                                    }
-                                }
-                            }
-
-                            Text {
-                                text: modelData.title
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: plCard.activeFocus ? "#ffffff" : "#e2e8f0"
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: modelData.subtitle || "Playlist"
-                                font.pixelSize: 11
-                                color: plCard.activeFocus ? "#e2e8f0" : "#94a3b8"
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                playlistsListView.currentIndex = index
-                                plCard.forceActiveFocus()
-                                gridView.itemSelected(modelData)
-                            }
-                        }
-
-                        Keys.onReturnPressed: gridView.itemSelected(modelData)
-                        Keys.onSpacePressed: gridView.itemSelected(modelData)
-
-                        Keys.onLeftPressed: function(event) {
-                            if (index <= 0) {
-                                gridView.requestSidebarFocus()
-                            } else if (index > 0) {
-                                playlistsListView.currentIndex = index - 1
-                                if (playlistsListView.currentItem) playlistsListView.currentItem.forceActiveFocus()
-                            }
-                            event.accepted = true
-                        }
-
-                        Keys.onRightPressed: function(event) {
-                            if (index < playlistsListView.count - 1) {
-                                playlistsListView.currentIndex = index + 1
-                                if (playlistsListView.currentItem) playlistsListView.currentItem.forceActiveFocus()
-                            }
-                            event.accepted = true
-                        }
-
-                        Keys.onUpPressed: function(event) {
+                    Keys.onLeftPressed: function(event) {
+                        if (index > 0) {
+                            var prev = musicSubTabBarRepeater.itemAt(index - 1)
+                            if (prev) prev.forceActiveFocus()
+                        } else {
                             gridView.requestSidebarFocus()
-                            event.accepted = true
                         }
+                        event.accepted = true
+                    }
 
-                        Keys.onDownPressed: function(event) {
-                            if (mediaGridView.count > 0) {
-                                playlistsExpanded = false
-                                var targetIdx = Math.min(index, mediaGridView.count - 1)
-                                mediaGridView.currentIndex = targetIdx
-                                mediaGridView.forceActiveFocus()
-                                Qt.callLater(function() {
-                                    if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
-                                })
-                            }
-                            event.accepted = true
+                    Keys.onRightPressed: function(event) {
+                        if (index < musicSubTabBarRepeater.count - 1) {
+                            var next = musicSubTabBarRepeater.itemAt(index + 1)
+                            if (next) next.forceActiveFocus()
                         }
+                        event.accepted = true
+                    }
+
+                    Keys.onUpPressed: function(event) {
+                        gridView.requestSidebarFocus()
+                        event.accepted = true
+                    }
+
+                    Keys.onDownPressed: function(event) {
+                        mediaGridView.forceActiveFocus()
+                        if (mediaGridView.currentIndex < 0 && mediaGridView.count > 0) mediaGridView.currentIndex = 0
+                        if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+                        event.accepted = true
                     }
                 }
             }
-        }
-
-        // Subtitle header for Albums when Playlists are present
-        Text {
-            text: "Albums & Tracks"
-            font.pixelSize: 20
-            font.bold: true
-            color: mediaGridView.activeFocus ? AppData.currentTheme.accent : "#f8fafc"
-            visible: categoryFilter === "music" && playlistsContainer.visible
+            Item { Layout.fillWidth: true }
         }
 
         // Clean Flat Media Grid
@@ -323,14 +208,10 @@ Item {
                 if (columns <= 0) columns = 1
                 if (currentIndex < columns) {
                     if (categoryFilter === "music") {
-                        playlistsExpanded = true
-                        if (playlistsListView && playlistsListView.count > 0) {
-                            var targetIdx = Math.min(currentIndex, playlistsListView.count - 1)
-                            playlistsListView.currentIndex = targetIdx
-                            playlistsListView.forceActiveFocus()
-                            Qt.callLater(function() {
-                                if (playlistsListView.currentItem) playlistsListView.currentItem.forceActiveFocus()
-                            })
+                        var activeIdx = (gridView.musicSubFilter === "artists") ? 1 : ((gridView.musicSubFilter === "playlists") ? 2 : 0)
+                        var targetTab = musicSubTabBarRepeater.itemAt(activeIdx)
+                        if (targetTab) {
+                            targetTab.forceActiveFocus()
                         } else {
                             gridView.requestSidebarFocus()
                         }
@@ -353,14 +234,22 @@ Item {
                 } else if (categoryFilter === "tvshows") {
                     return AppData.tvShowsList.length > 0 ? AppData.tvShowsList : AppData.mediaGrid.filter(function(i){ return i.mediaType === "Series" || i.mediaType === "series" || i.mediaType === "TvProgram" })
                 } else if (categoryFilter === "music") {
-                    var rawMusic = AppData.musicList.length > 0 ? AppData.musicList : AppData.mediaGrid.filter(function(i){ return i.mediaType === "Playlist" || i.mediaType === "MusicAlbum" || i.mediaType === "Audio" || i.mediaType === "MusicArtist" })
-                    var albumsOnly = []
-                    for (var m = 0; m < rawMusic.length; m++) {
-                        if (rawMusic[m].mediaType !== "Playlist" && rawMusic[m].Type !== "Playlist") {
-                            albumsOnly.push(rawMusic[m])
+                    if (musicSubFilter === "playlists") {
+                        return gridView.playlistsList
+                    } else if (musicSubFilter === "artists") {
+                        return AppData.artistsList && AppData.artistsList.length > 0 ? AppData.artistsList : AppData.musicList.filter(function(a){ return a.mediaType === "MusicArtist" || a.Type === "MusicArtist" })
+                    } else if (musicSubFilter === "songs") {
+                        var rawMusicS = AppData.musicList.length > 0 ? AppData.musicList : AppData.mediaGrid
+                        var songsOnly = []
+                        for (var s = 0; s < rawMusicS.length; s++) {
+                            if (rawMusicS[s].mediaType === "Audio" || rawMusicS[s].Type === "Audio" || rawMusicS[s].mediaType === "MusicTrack") {
+                                songsOnly.push(rawMusicS[s])
+                            }
                         }
+                        return songsOnly.length > 0 ? songsOnly : rawMusicS
+                    } else {
+                        return gridView.playlistsList
                     }
-                    return albumsOnly.length > 0 ? albumsOnly : rawMusic
                 } else if (categoryFilter === "favorites") {
                     return AppData.favoritesList.length > 0 ? AppData.favoritesList : AppData.mediaGrid.filter(function(i){ return i.isFavorite })
                 }
@@ -418,15 +307,97 @@ Item {
                             color: "#020617"
                             clip: true
 
-                            Image {
+                            // 2x2 Quadrant Collage for Playlists (Matches Official Jellyfin UI in Screenshot)
+                            Item {
                                 anchors.fill: parent
+                                visible: (modelData.mediaType === "Playlist" || modelData.Type === "Playlist") && (modelData.poster1 && modelData.poster2)
+
+                                Grid {
+                                    anchors.fill: parent
+                                    columns: 2
+                                    rows: 2
+                                    spacing: 1
+
+                                    Image {
+                                        width: parent.width / 2 - 0.5
+                                        height: parent.height / 2 - 0.5
+                                        source: modelData.poster1 || modelData.posterUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                    }
+                                    Image {
+                                        width: parent.width / 2 - 0.5
+                                        height: parent.height / 2 - 0.5
+                                        source: modelData.poster2 || modelData.posterUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                    }
+                                    Image {
+                                        width: parent.width / 2 - 0.5
+                                        height: parent.height / 2 - 0.5
+                                        source: modelData.poster3 || modelData.poster1 || modelData.posterUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                    }
+                                    Image {
+                                        width: parent.width / 2 - 0.5
+                                        height: parent.height / 2 - 0.5
+                                        source: modelData.poster4 || modelData.poster2 || modelData.posterUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                    }
+                                }
+                            }
+
+                            // Single Poster / Image for regular items & Jellyfin API playlists
+                            Image {
+                                id: artistImg
+                                anchors.fill: parent
+                                visible: !((modelData.mediaType === "Playlist" || modelData.Type === "Playlist") && (modelData.poster1 && modelData.poster2)) && !((modelData.mediaType === "MusicArtist" || modelData.Type === "MusicArtist") && (!modelData.posterUrl || modelData.posterUrl === ""))
                                 source: isEpisodeItem ? (modelData.thumbUrl || modelData.backdropUrl || modelData.posterUrl) : modelData.posterUrl
-                                fillMode: isEpisodeItem ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+                                fillMode: isEpisodeItem ? Image.PreserveAspectCrop : (isMusicItem ? Image.PreserveAspectCrop : Image.PreserveAspectFit)
                                 verticalAlignment: Image.AlignVCenter
                                 horizontalAlignment: Image.AlignHCenter
                                 smooth: true
                                 asynchronous: true
                                 cache: true
+                            }
+
+                            // Fallback Silhouette Tile for Artists without Photo (Matches Official Jellyfin UI in Screenshot)
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: (modelData.mediaType === "MusicArtist" || modelData.Type === "MusicArtist") && (artistImg.status !== Image.Ready || !modelData.posterUrl || modelData.posterUrl === "")
+                                color: {
+                                    var colors = ["#7c3aed", "#6366f1", "#059669", "#d97706", "#dc2626", "#4f46e5", "#0d9488"]
+                                    var hash = 0
+                                    var str = modelData.title || "Artist"
+                                    for (var c = 0; c < str.length; c++) hash = str.charCodeAt(c) + ((hash << 5) - hash)
+                                    return colors[Math.abs(hash) % colors.length]
+                                }
+
+                                Item {
+                                    anchors.centerIn: parent
+                                    width: 70
+                                    height: 70
+
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        y: 6
+                                        width: 28
+                                        height: 28
+                                        radius: 14
+                                        color: "#ffffff"
+                                    }
+
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        y: 38
+                                        width: 52
+                                        height: 30
+                                        radius: 15
+                                        color: "#ffffff"
+                                    }
+                                }
                             }
 
                             // Centered Play Button Overlay for TV Episodes
@@ -450,7 +421,7 @@ Item {
                                 }
                             }
 
-                            // Watched Checkmark Badge at Top Right (Matches attached screenshot)
+                            // Watched Checkmark Badge at Top Right
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
@@ -458,7 +429,7 @@ Item {
                                 width: 24
                                 height: 24
                                 radius: 12
-                                color: "#0284c7"
+                                color: "#7c3aed"
                                 visible: isShowItem && (modelData.isPlayed || false)
 
                                 Text {
@@ -470,7 +441,7 @@ Item {
                                 }
                             }
 
-                            // Rating / Playlist Badge for Movies
+                            // Rating / Playlist Badge
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
@@ -498,14 +469,16 @@ Item {
                             color: gridCard.activeFocus ? "#ffffff" : "#e2e8f0"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
+                            horizontalAlignment: (modelData.mediaType === "Playlist" || modelData.Type === "Playlist") ? Text.AlignHCenter : Text.AlignLeft
                         }
 
                         Text {
-                            text: isShowItem ? (modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration)
+                            text: isShowItem ? (modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)) : (modelData.subtitle || (modelData.year ? (modelData.year + " • " + modelData.duration) : "Music"))
                             font.pixelSize: 12
                             color: gridCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
+                            horizontalAlignment: (modelData.mediaType === "Playlist" || modelData.Type === "Playlist") ? Text.AlignHCenter : Text.AlignLeft
                         }
                     }
 
@@ -537,14 +510,11 @@ Item {
                         if (columns <= 0) columns = 1
                         if (index < columns) {
                             if (categoryFilter === "music") {
-                                playlistsExpanded = true
-                                if (playlistsListView && playlistsListView.count > 0) {
-                                    var targetIdx = Math.min(index, playlistsListView.count - 1)
-                                    playlistsListView.currentIndex = targetIdx
-                                    playlistsListView.forceActiveFocus()
-                                    Qt.callLater(function() {
-                                        if (playlistsListView.currentItem) playlistsListView.currentItem.forceActiveFocus()
-                                    })
+                                var activeIdx = (gridView.musicSubFilter === "artists") ? 1 : ((gridView.musicSubFilter === "playlists") ? 2 : 0)
+                                var targetTab = musicSubTabBarRepeater.itemAt(activeIdx)
+                                if (!targetTab) targetTab = musicSubTabBarRepeater.itemAt(0)
+                                if (targetTab) {
+                                    targetTab.forceActiveFocus()
                                 } else {
                                     gridView.requestSidebarFocus()
                                 }

@@ -1,7 +1,10 @@
 package jellyfin
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -93,3 +96,106 @@ func TestParseServerURLs(t *testing.T) {
 		t.Errorf("expected http://jellyfin.local:8096, got %s", urls[2])
 	}
 }
+
+func TestPlaylistParsing(t *testing.T) {
+	jsonContent := `{
+		"Id": "pl-999",
+		"Name": "Chill Lo-Fi Beats",
+		"Type": "Playlist",
+		"MediaType": "Audio",
+		"ChildCount": 15,
+		"Overview": "Smooth tracks for relaxing"
+	}`
+
+	var item BaseItem
+	err := json.Unmarshal([]byte(jsonContent), &item)
+	if err != nil {
+		t.Fatalf("failed to unmarshal Playlist BaseItem: %v", err)
+	}
+
+	if item.ID != "pl-999" {
+		t.Errorf("expected ID 'pl-999', got '%s'", item.ID)
+	}
+	if item.Type != "Playlist" {
+		t.Errorf("expected Type 'Playlist', got '%s'", item.Type)
+	}
+	if item.ChildCount != 15 {
+		t.Errorf("expected ChildCount 15, got %d", item.ChildCount)
+	}
+}
+
+func TestFetchPlaylists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/Users/user-123/Items") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		if r.URL.Query().Get("IncludeItemTypes") != "Playlist" {
+			t.Errorf("expected IncludeItemTypes=Playlist, got %s", r.URL.Query().Get("IncludeItemTypes"))
+		}
+		if r.URL.Query().Get("Recursive") != "true" {
+			t.Errorf("expected Recursive=true, got %s", r.URL.Query().Get("Recursive"))
+		}
+
+		resp := ItemsQueryResult{
+			Items: []BaseItem{
+				{ID: "pl-1", Name: "Rock Hits", Type: "Playlist", ChildCount: 10},
+				{ID: "pl-2", Name: "Jazz Classics", Type: "Playlist", ChildCount: 5},
+			},
+			TotalRecordCount: 2,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	client.UserID = "user-123"
+
+	playlists, err := client.FetchPlaylists(context.Background())
+	if err != nil {
+		t.Fatalf("FetchPlaylists failed: %v", err)
+	}
+	if len(playlists) != 2 {
+		t.Fatalf("expected 2 playlists, got %d", len(playlists))
+	}
+	if playlists[0].Name != "Rock Hits" || playlists[1].Name != "Jazz Classics" {
+		t.Errorf("unexpected playlist names: %v", playlists)
+	}
+}
+
+func TestFetchPlaylistItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/Playlists/pl-1/Items") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+
+		resp := ItemsQueryResult{
+			Items: []BaseItem{
+				{ID: "song-1", Name: "Bohemian Rhapsody", Type: "Audio", RunTimeTicks: 3540000000},
+			},
+			TotalRecordCount: 1,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	client.UserID = "user-123"
+
+	items, err := client.FetchPlaylistItems(context.Background(), "pl-1")
+	if err != nil {
+		t.Fatalf("FetchPlaylistItems failed: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 playlist item, got %d", len(items))
+	}
+	if items[0].Name != "Bohemian Rhapsody" {
+		t.Errorf("expected track name 'Bohemian Rhapsody', got '%s'", items[0].Name)
+	}
+}
+

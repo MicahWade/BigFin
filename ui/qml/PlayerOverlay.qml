@@ -21,6 +21,11 @@ Item {
 
     property string streamUrl: {
         if (activeMedia && activeMedia.id && AppData.liveServerUrl && AppData.accessToken) {
+            var mType = activeMedia.mediaType || activeMedia.Type || (activeMedia.rawData ? activeMedia.rawData.Type : "")
+            var isAudio = (mType === "Audio" || mType === "MusicTrack" || mType === "MusicAlbum" || mType === "Playlist")
+            if (isAudio) {
+                return AppData.liveServerUrl + "/Audio/" + activeMedia.id + "/stream?static=true&api_key=" + AppData.accessToken
+            }
             var msId = (activeMedia.rawData && activeMedia.rawData.MediaSources && activeMedia.rawData.MediaSources.length > 0) ? activeMedia.rawData.MediaSources[0].Id : activeMedia.id
             return AppData.liveServerUrl + "/Videos/" + activeMedia.id + "/master.m3u8?MediaSourceId=" + msId + "&VideoCodec=h264&AudioCodec=aac,mp3&api_key=" + AppData.accessToken
         }

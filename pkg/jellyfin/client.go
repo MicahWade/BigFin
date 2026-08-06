@@ -167,6 +167,85 @@ func (c *Client) FetchItems(ctx context.Context, parentID string, includeTypes s
 	return result.Items, nil
 }
 
+// FetchPlaylists retrieves user playlists from the Jellyfin server
+func (c *Client) FetchPlaylists(ctx context.Context) ([]BaseItem, error) {
+	if c.UserID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	params := url.Values{}
+	params.Set("IncludeItemTypes", "Playlist")
+	params.Set("Recursive", "true")
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,ChildCount,MediaType,PlaylistMediaType")
+
+	endpoint := fmt.Sprintf("/Users/%s/Items?%s", c.UserID, params.Encode())
+	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status code: %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ItemsQueryResult
+	if err := json.Unmarshal(bodyBytes, &result); err == nil && len(result.Items) > 0 {
+		return result.Items, nil
+	}
+
+	var items []BaseItem
+	if err := json.Unmarshal(bodyBytes, &items); err == nil {
+		return items, nil
+	}
+
+	return result.Items, nil
+}
+
+// FetchPlaylistItems retrieves items contained in a playlist from Jellyfin
+func (c *Client) FetchPlaylistItems(ctx context.Context, playlistID string) ([]BaseItem, error) {
+	if c.UserID == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	params := url.Values{}
+	params.Set("UserId", c.UserID)
+	params.Set("Fields", "PrimaryImageAspectRatio,Overview,Genres,MediaSources,UserData,RunTimeTicks,Artists,ArtistItems,Album,AlbumArtist")
+
+	endpoint := fmt.Sprintf("/Playlists/%s/Items?%s", playlistID, params.Encode())
+	resp, err := c.Do(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status code: %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ItemsQueryResult
+	if err := json.Unmarshal(bodyBytes, &result); err == nil && len(result.Items) > 0 {
+		return result.Items, nil
+	}
+
+	var items []BaseItem
+	if err := json.Unmarshal(bodyBytes, &items); err == nil {
+		return items, nil
+	}
+
+	return result.Items, nil
+}
+
 // BuildImageURL constructs a Jellyfin image URL in lightweight WebP format for a given item and image type
 func (c *Client) BuildImageURL(itemID, imageType string, width, height int) string {
 	baseURL := fmt.Sprintf("%s/Items/%s/Images/%s", c.ServerURL, itemID, imageType)

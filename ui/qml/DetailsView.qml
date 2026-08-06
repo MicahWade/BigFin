@@ -32,15 +32,18 @@ Item {
         if (!item) return "Movie"
         var t = item.mediaType || item.type || item.Type || (item.rawData ? (item.rawData.Type || item.rawData.mediaType) : "")
         if (typeof t === "string") t = t.toLowerCase()
+        if (t === "playlist") return "Playlist"
+        if (t === "musicalbum") return "MusicAlbum"
+        if (t === "musicartist" || t === "artist") return "MusicArtist"
+        if (t === "audio" || t === "musictrack" || t === "song") return "Audio"
         if (t === "episode") return "Episode"
         if (item.seriesId || item.SeriesId || (item.rawData && item.rawData.SeriesId)) return "Episode"
         if (item.seasonId || item.SeasonId || (item.rawData && item.rawData.SeasonId)) return "Episode"
-        if (t === "series" || t === "show" || t === "tvshow" || t === "folder") return "Series"
-        if (item.seasonsEpisodesStr && item.seasonsEpisodesStr !== "") return "Series"
-        if (item.childCount && item.childCount > 0) return "Series"
-        if (item.recursiveItemCount && item.recursiveItemCount > 0) return "Series"
+        if (t === "series" || t === "show" || t === "tvshow") return "Series"
+        if (item.seasonsEpisodesStr && item.seasonsEpisodesStr !== "" && !detailsView.isMusic) return "Series"
         if (item.seasonCount && item.seasonCount > 0) return "Series"
         if (item.episodeCount && item.episodeCount > 0) return "Series"
+        if (t === "folder" && item.childCount && item.childCount > 0) return "Series"
         return "Movie"
     }
 
@@ -52,7 +55,7 @@ Item {
         if (!item) return false
         var t = item.mediaType || item.type || item.Type || (item.rawData ? (item.rawData.Type || item.rawData.mediaType) : "")
         if (typeof t === "string") t = t.toLowerCase()
-        return (t === "musicalbum" || t === "playlist" || t === "audio" || t === "musicartist" || t === "music")
+        return (t === "musicalbum" || t === "playlist" || t === "audio" || t === "musicartist" || t === "music" || t === "musictrack" || t === "song")
     }
 
     readonly property bool isMusic: getIsMusic()
@@ -82,6 +85,13 @@ Item {
 
     function getEpisodeSubtitle(ep) {
         if (!ep) return ""
+        var mType = ep.mediaType || ep.Type || ""
+        if (detailsView.isMusic || mType === "Audio" || mType === "MusicTrack" || ep.artist || ep.albumArtist) {
+            var artStr = ep.subtitle || ep.artist || ep.albumArtist || ""
+            var dur = ep.duration || ""
+            if (artStr && dur) return artStr + " • " + dur
+            return artStr || dur || "Track"
+        }
         var sNum = ep.seasonNumber || 1
         var eNum = ep.episodeNumber || ""
         var codeStr = (sNum && eNum) ? ("S" + sNum + ":E" + eNum) : (ep.epCode || "")
@@ -339,6 +349,22 @@ Item {
         ]
     }
 
+    function loadDemoPlaylistTracks() {
+        var demoArt = item ? (item.posterUrl || item.backdropUrl || "assets/posters/sabaton.svg") : "assets/posters/sabaton.svg"
+        var playlistName = item ? (item.title || "Playlist") : "Playlist"
+        var demoTracks = [
+            { id: "tr_1", title: "1. Midnight City", episodeName: "Midnight City", episodeNumber: "1", mediaType: "Audio", duration: "4m 03s", subtitle: "M83 • Hurry Up, We're Dreaming", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
+            { id: "tr_2", title: "2. Starboy", episodeName: "Starboy", episodeNumber: "2", mediaType: "Audio", duration: "3m 50s", subtitle: "The Weeknd • Starboy", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
+            { id: "tr_3", title: "3. Blinding Lights", episodeName: "Blinding Lights", episodeNumber: "3", mediaType: "Audio", duration: "3m 20s", subtitle: "The Weeknd • After Hours", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
+            { id: "tr_4", title: "4. Get Lucky", episodeName: "Get Lucky", episodeNumber: "4", mediaType: "Audio", duration: "4m 08s", subtitle: "Daft Punk • Random Access Memories", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
+            { id: "tr_5", title: "5. Resonating Echoes", episodeName: "Resonating Echoes", episodeNumber: "5", mediaType: "Audio", duration: "3m 45s", subtitle: "Synthetix • Cyber City", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
+            { id: "tr_6", title: "6. Neon Nights", episodeName: "Neon Nights", episodeNumber: "6", mediaType: "Audio", duration: "4m 15s", subtitle: "Solar Wave • Retrowave Essentials", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false }
+        ]
+        seasonsWithEpisodes = [
+            { id: "pl_tracks", seasonNumber: 1, title: playlistName + " Songs", episodes: demoTracks, childCount: demoTracks.length }
+        ]
+    }
+
     function groupEpisodesBySeason(allEps) {
         if (!allEps || allEps.length === 0) return []
         var seasonMap = {}
@@ -501,6 +527,30 @@ Item {
                     seasonsWithEpisodes = []
                 }
             })
+        } else if (detailsView.isMusic || resolvedType === "Playlist" || resolvedType === "MusicAlbum") {
+            var plId = item ? (item.id || item.Id || (item.rawData ? item.rawData.Id : "")) : ""
+            if (plId !== "" && AppData.liveServerUrl && AppData.userId) {
+                AppData.fetchPlaylistItems(plId, function(tracks) {
+                    if (tracks && tracks.length > 0) {
+                        var trackGroup = {
+                            id: plId,
+                            seasonNumber: 1,
+                            title: (item.title || "Playlist") + " Tracks",
+                            episodes: tracks,
+                            childCount: tracks.length
+                        }
+                        seasonsWithEpisodes = [trackGroup]
+                    } else if (AppData.isConnectedToLiveServer) {
+                        seasonsWithEpisodes = []
+                    } else {
+                        loadDemoPlaylistTracks()
+                    }
+                })
+            } else if (AppData.isConnectedToLiveServer) {
+                seasonsWithEpisodes = []
+            } else {
+                loadDemoPlaylistTracks()
+            }
         } else {
             seasonsWithEpisodes = []
         }
@@ -1111,7 +1161,7 @@ Item {
             // ==========================================
             Repeater {
                 id: seasonsRepeater
-                model: detailsView.isSeries ? detailsView.seasonsWithEpisodes : []
+                model: (detailsView.isSeries || detailsView.isMusic) ? detailsView.seasonsWithEpisodes : []
 
                 delegate: ColumnLayout {
                     id: seasonSwimlaneCol
@@ -1123,55 +1173,234 @@ Item {
                     spacing: 14
 
                     function focusFirstCard() {
-                        seasonEpListView.forceActiveFocus()
-                        if (seasonEpListView.currentItem) {
-                            seasonEpListView.currentItem.forceActiveFocus()
+                        if (detailsView.isMusic) {
+                            musicTrackGridView.forceActiveFocus()
+                            if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
+                        } else {
+                            seasonEpListView.forceActiveFocus()
+                            if (seasonEpListView.currentItem) seasonEpListView.currentItem.forceActiveFocus()
                         }
                     }
 
                     function focusCurrentOrFirstCard(idx) {
-                        seasonEpListView.forceActiveFocus()
-                        var mode = (AppData ? AppData.seasonNavModeIdx : 0)
-                        var targetIndex = 0
-                        if (mode === 1) {
-                            targetIndex = Math.min(idx, seasonEpListView.count - 1)
-                        } else if (mode === 2) {
-                            targetIndex = 0
+                        if (detailsView.isMusic) {
+                            musicTrackGridView.forceActiveFocus()
+                            if (musicTrackGridView.currentIndex < 0 && musicTrackGridView.count > 0) musicTrackGridView.currentIndex = 0
+                            if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
                         } else {
-                            if (seasonSwimlaneCol.hasBeenSelected && seasonEpListView.currentIndex >= 0) {
-                                targetIndex = seasonEpListView.currentIndex
-                            } else {
+                            seasonEpListView.forceActiveFocus()
+                            var mode = (AppData ? AppData.seasonNavModeIdx : 0)
+                            var targetIndex = 0
+                            if (mode === 1) {
+                                targetIndex = Math.min(idx, seasonEpListView.count - 1)
+                            } else if (mode === 2) {
                                 targetIndex = 0
+                            } else {
+                                if (seasonSwimlaneCol.hasBeenSelected && seasonEpListView.currentIndex >= 0) {
+                                    targetIndex = seasonEpListView.currentIndex
+                                } else {
+                                    targetIndex = 0
+                                }
                             }
-                        }
-                        if (targetIndex >= 0 && targetIndex < seasonEpListView.count) {
-                            seasonEpListView.currentIndex = targetIndex
-                        }
-                        if (seasonEpListView.currentItem) {
-                            seasonEpListView.currentItem.forceActiveFocus()
+                            if (targetIndex >= 0 && targetIndex < seasonEpListView.count) {
+                                seasonEpListView.currentIndex = targetIndex
+                            }
+                            if (seasonEpListView.currentItem) {
+                                seasonEpListView.currentItem.forceActiveFocus()
+                            }
                         }
                     }
 
-                    // Season Header Title & Episode Count
+                    // Header Title & Track/Episode Count
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: modelData.seasonNumber ? ("Season " + modelData.seasonNumber) : (modelData.title || "Season")
+                            text: detailsView.isMusic ? (modelData.title || "Playlist Tracks") : (modelData.seasonNumber ? ("Season " + modelData.seasonNumber) : (modelData.title || "Season"))
                             font.pixelSize: 22
                             font.bold: true
                             color: "#ffffff"
                         }
                         Item { Layout.fillWidth: true }
                         Text {
-                            text: (modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Episodes"
+                            text: detailsView.isMusic ? ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Tracks") : ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Episodes")
                             font.pixelSize: 13
                             color: "#94a3b8"
                         }
                     }
 
-                    // Horizontal Episode Swimlane
+                    // 2D Grid View for Music Songs (navigates Left, Right, Up, Down like main Music Grid)
+                    GridView {
+                        id: musicTrackGridView
+                        visible: detailsView.isMusic
+                        Layout.fillWidth: true
+                        cellWidth: 210
+                        cellHeight: 260
+                        clip: false
+                        focus: true
+                        model: modelData.episodes || []
+
+                        property int numCols: Math.max(1, Math.floor(width / cellWidth))
+                        Layout.preferredHeight: Math.max(260, Math.ceil(count / Math.max(1, Math.floor(width / cellWidth))) * cellHeight)
+
+                        onActiveFocusChanged: {
+                            if (activeFocus && currentItem) {
+                                currentItem.forceActiveFocus()
+                            }
+                        }
+
+                        delegate: Rectangle {
+                            id: musicSongCard
+                            width: 190
+                            height: 245
+                            radius: 12
+                            color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
+                            border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
+                            border.width: activeFocus ? 4 : 1
+                            scale: activeFocus ? 1.03 : 1.0
+                            focus: true
+
+                            Behavior on scale { NumberAnimation { duration: 120; easing.type: "OutCubic" } }
+                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            onActiveFocusChanged: {
+                                if (activeFocus) {
+                                    seasonSwimlaneCol.hasBeenSelected = true
+                                    detailsView.lastFocusedItem = musicSongCard
+                                    musicTrackGridView.currentIndex = index
+                                    detailsView.ensureVisible(musicSongCard)
+                                }
+                            }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 8
+
+                                // Square 1:1 Album Art Container
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 170
+                                    radius: 8
+                                    color: "#020617"
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: modelData.posterUrl || modelData.thumbUrl || modelData.backdropUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        smooth: true
+                                        asynchronous: true
+                                        cache: true
+                                    }
+
+                                    // Centered Play Button Overlay
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 44
+                                        height: 44
+                                        radius: 22
+                                        color: songPlayMouse.containsMouse ? AppData.currentTheme.accent : "#cc0f172a"
+                                        border.color: "#ffffff"
+                                        border.width: 1
+                                        z: 10
+
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 18
+                                            height: 18
+                                            source: "assets/icons/play.svg"
+                                            fillMode: Image.PreserveAspectFit
+                                        }
+
+                                        MouseArea {
+                                            id: songPlayMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: detailsView.playRequested(modelData)
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: (modelData.episodeNumber ? (modelData.episodeNumber + ". ") : "") + (modelData.episodeName || modelData.title)
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    color: "#ffffff"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: detailsView.getEpisodeSubtitle(modelData)
+                                    font.pixelSize: 12
+                                    color: "#94a3b8"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                z: 1
+                                onClicked: detailsView.playRequested(modelData)
+                            }
+
+                            Keys.onReturnPressed: detailsView.playRequested(modelData)
+                            Keys.onSpacePressed: detailsView.playRequested(modelData)
+
+                            Keys.onUpPressed: function(event) {
+                                var cols = musicTrackGridView.numCols
+                                if (index < cols) {
+                                    playBtn.forceActiveFocus()
+                                    mainFlickable.contentY = 0
+                                } else {
+                                    var target = index - cols
+                                    musicTrackGridView.currentIndex = target
+                                    if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
+                                }
+                                event.accepted = true
+                            }
+
+                            Keys.onDownPressed: function(event) {
+                                var cols = musicTrackGridView.numCols
+                                if (index + cols < musicTrackGridView.count) {
+                                    var target = index + cols
+                                    musicTrackGridView.currentIndex = target
+                                    if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
+                                } else if (castListView.visible && castListView.count > 0) {
+                                    castListView.forceActiveFocus()
+                                    if (castListView.currentItem) castListView.currentItem.forceActiveFocus()
+                                }
+                                event.accepted = true
+                            }
+
+                            Keys.onLeftPressed: function(event) {
+                                var cols = musicTrackGridView.numCols
+                                if (index % cols === 0) {
+                                    detailsView.requestSidebarFocus()
+                                } else {
+                                    musicTrackGridView.currentIndex = index - 1
+                                    if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
+                                }
+                                event.accepted = true
+                            }
+
+                            Keys.onRightPressed: function(event) {
+                                var cols = musicTrackGridView.numCols
+                                if ((index + 1) % cols !== 0 && index + 1 < musicTrackGridView.count) {
+                                    musicTrackGridView.currentIndex = index + 1
+                                    if (musicTrackGridView.currentItem) musicTrackGridView.currentItem.forceActiveFocus()
+                                }
+                                event.accepted = true
+                            }
+                        }
+                    }
+
+                    // Horizontal Episode Swimlane (for TV Shows)
                     ListView {
                         id: seasonEpListView
+                        visible: !detailsView.isMusic
                         Layout.fillWidth: true
                         Layout.preferredHeight: 250
                         orientation: ListView.Horizontal
@@ -1306,11 +1535,21 @@ Item {
                                 anchors.fill: parent
                                 z: 1
                                 onClicked: {
-                                    detailsView.item = modelData
+                                    if (detailsView.isMusic) {
+                                        detailsView.playRequested(modelData)
+                                    } else {
+                                        detailsView.item = modelData
+                                    }
                                 }
                             }
 
-                            Keys.onReturnPressed: detailsView.item = modelData
+                            Keys.onReturnPressed: {
+                                if (detailsView.isMusic) {
+                                    detailsView.playRequested(modelData)
+                                } else {
+                                    detailsView.item = modelData
+                                }
+                            }
                             Keys.onSpacePressed: detailsView.playRequested(modelData)
 
                             Keys.onUpPressed: function(event) {

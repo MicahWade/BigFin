@@ -41,7 +41,7 @@ Item {
         if (!item) return false
 
         var mediaType = item.mediaType || item.Type || ""
-        var isMusic = (mediaType === "MusicAlbum" || mediaType === "Audio" || mediaType === "MusicArtist" || mediaType === "Playlist" || !!item.artist || !!item.album)
+        var isMusic = (mediaType === "MusicAlbum" || mediaType === "Audio" || mediaType === "MusicArtist" || mediaType === "Playlist" || mediaType === "MusicTrack" || !!item.artist || !!item.album)
 
         if (isMusic && ratingsCategoryIdx !== 3) {
             return false
@@ -171,28 +171,72 @@ Item {
     property var moviesList: []
     property var tvShowsList: []
     property var musicList: []
+    property var artistsList: [
+        { id: "art_1", title: "Alan Menken", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/interstellar.svg" },
+        { id: "art_2", title: "Andra Day", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/bladerunner.svg" },
+        { id: "art_3", title: "B.B. King", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/american_pie.svg" },
+        { id: "art_4", title: "Baljeet", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_5", title: "The Beatles", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/dune2.svg" },
+        { id: "art_6", title: "Bénabar", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/mandalorian.svg" },
+        { id: "art_7", title: "Black Eyed Peas", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/breakingbad.svg" },
+        { id: "art_8", title: "Boney M.", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/sabaton.svg" },
+        { id: "art_9", title: "Brad Paisley", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/matrix.svg" }
+    ]
     property var playlistsList: [
         {
-            id: "pl1",
+            id: "pl_m1",
+            title: "Blockbuster Movies",
+            mediaType: "Playlist",
+            playlistType: "Movie",
+            subtitle: "4 Movies • Playlist",
+            posterUrl: "assets/posters/interstellar.svg",
+            poster1: "assets/posters/interstellar.svg",
+            poster2: "assets/posters/bladerunner.svg",
+            poster3: "assets/posters/dune2.svg"
+        },
+        {
+            id: "pl_m2",
+            title: "Sci-Fi & Action",
+            mediaType: "Playlist",
+            playlistType: "Movie",
+            subtitle: "6 Movies • Playlist",
+            posterUrl: "assets/posters/bladerunner.svg",
+            poster1: "assets/posters/bladerunner.svg",
+            poster2: "assets/posters/dune2.svg",
+            poster3: "assets/posters/mandalorian.svg"
+        },
+        {
+            id: "pl_m3",
+            title: "Family Movie Night",
+            mediaType: "Playlist",
+            playlistType: "Movie",
+            subtitle: "5 Movies • Playlist",
+            posterUrl: "assets/posters/american_pie.svg",
+            poster1: "assets/posters/american_pie.svg",
+            poster2: "assets/posters/breakingbad.svg",
+            poster3: "assets/posters/interstellar.svg"
+        },
+        {
+            id: "pl_s1",
             title: "Family Playlist",
             mediaType: "Playlist",
-            subtitle: "Playlist",
+            playlistType: "Audio",
+            subtitle: "12 Songs • Playlist",
             posterUrl: "assets/posters/american_pie.svg",
             poster1: "assets/posters/american_pie.svg",
             poster2: "assets/posters/sabaton.svg",
-            poster3: "assets/posters/bladerunner.svg",
-            poster4: "assets/posters/interstellar.svg"
+            poster3: "assets/posters/bladerunner.svg"
         },
         {
-            id: "pl2",
+            id: "pl_s2",
             title: "My Song List",
             mediaType: "Playlist",
-            subtitle: "Playlist",
+            playlistType: "Audio",
+            subtitle: "8 Songs • Playlist",
             posterUrl: "assets/posters/sabaton.svg",
-            poster1: "assets/posters/american_pie.svg",
+            poster1: "assets/posters/sabaton.svg",
             poster2: "assets/posters/dune2.svg",
-            poster3: "assets/posters/mandalorian.svg",
-            poster4: "assets/posters/breakingbad.svg"
+            poster3: "assets/posters/mandalorian.svg"
         }
     ]
     property var favoritesList: []
@@ -541,6 +585,7 @@ Item {
                     fetchMovies()
                     fetchTVShows()
                     fetchMusic()
+                    fetchPlaylists()
                     fetchFavorites()
                     fetchContinueWatching()
                     fetchNextUpList()
@@ -574,7 +619,7 @@ Item {
             var isSeries = (item.Type === "Series" || item.Type === "TvShow" || item.Type === "Show")
             var isSeason = (item.Type === "Season")
             var isPlaylist = (item.Type === "Playlist")
-            var isMusic = (item.Type === "MusicAlbum" || item.Type === "Audio" || item.Type === "MusicArtist" || item.Type === "Playlist")
+            var isMusic = (item.Type === "MusicAlbum" || item.Type === "Audio" || item.Type === "MusicArtist" || item.Type === "Playlist" || item.Type === "MusicTrack")
             var displayTitle = isEpisode ? (item.SeriesName || item.Name || "Untitled") : (item.Name || "Untitled")
             
             var sNum = item.ParentIndexNumber !== undefined ? item.ParentIndexNumber : (item.IndexNumber !== undefined && isSeason ? item.IndexNumber : "")
@@ -740,6 +785,7 @@ Item {
                 seasonNumber: sNum,
                 episodeNumber: eNum,
                 mediaType: item.Type || "Movie",
+                playlistType: item.PlaylistMediaType || item.MediaType || (item.Type === "Playlist" ? "Audio" : ""),
                 year: item.ProductionYear ? String(item.ProductionYear) : "2024",
                 rating: item.CommunityRating ? item.CommunityRating.toFixed(1) : "8.5",
                 duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) + "m" : "22m",
@@ -1165,8 +1211,39 @@ Item {
         xhr.send()
     }
 
+    function fetchPlaylists() {
+        if (!liveServerUrl || !userId) return
+        var cached = getCachedData("playlists")
+        if (cached && cached.length > 0) {
+            playlistsList = cached
+            updateMasterGrid()
+        }
+
+        var xhrPl = new XMLHttpRequest()
+        var urlPl = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Playlist&Recursive=true&Fields=PrimaryImageAspectRatio,Overview,ChildCount,MediaType,PlaylistMediaType"
+        xhrPl.open("GET", urlPl)
+        xhrPl.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhrPl.onreadystatechange = function() {
+            if (xhrPl.readyState === XMLHttpRequest.DONE && xhrPl.status === 200) {
+                try {
+                    var resPl = JSON.parse(xhrPl.responseText)
+                    var rawPl = resPl.Items || (Array.isArray(resPl) ? resPl : [])
+                    var parsedPl = parseJellyfinItems(rawPl)
+                    playlistsList = parsedPl
+                    setCachedData("playlists", playlistsList, 300000)
+                    console.log("[JELLYFIN API] Playlists endpoint loaded " + parsedPl.length + " playlists from Jellyfin")
+                    updateMasterGrid()
+                } catch (e) {
+                    console.log("[JELLYFIN API ERROR] Playlists endpoint fail: " + e)
+                }
+            }
+        }
+        xhrPl.send()
+    }
+
     function fetchMusic() {
         if (!liveServerUrl || !userId) return
+        fetchPlaylists()
         var cached = getCachedData("music")
         if (cached) {
             musicList = cached
@@ -1174,7 +1251,7 @@ Item {
             return
         }
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Playlist,MusicAlbum,Audio&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount&Limit=100"
+        var url = liveServerUrl + "/Users/" + userId + "/Items?IncludeItemTypes=Playlist,MusicAlbum,Audio,MusicArtist&Recursive=true&SortBy=SortName&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount,MediaType,PlaylistMediaType&Limit=100"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
@@ -1195,6 +1272,7 @@ Item {
                     }
                     if (playlists.length > 0) {
                         playlistsList = playlists
+                        setCachedData("playlists", playlistsList, 300000)
                     }
                     musicList = playlists.concat(nonPlaylists)
                     setCachedData("music", musicList, 300000)
@@ -1207,25 +1285,130 @@ Item {
         }
         xhr.send()
 
-        // Also query /Users/{userId}/Playlists as additional endpoint for playlists
-        var xhrPl = new XMLHttpRequest()
-        var urlPl = liveServerUrl + "/Users/" + userId + "/Playlists?Fields=PrimaryImageAspectRatio,Overview,ChildCount"
-        xhrPl.open("GET", urlPl)
-        xhrPl.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
-        xhrPl.onreadystatechange = function() {
-            if (xhrPl.readyState === XMLHttpRequest.DONE && xhrPl.status === 200) {
+        // Dedicated query for Jellyfin Artists
+        var xhrArt = new XMLHttpRequest()
+        var urlArt = liveServerUrl + "/Artists?UserId=" + userId + "&Fields=PrimaryImageAspectRatio,Overview,Genres"
+        xhrArt.open("GET", urlArt)
+        xhrArt.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhrArt.onreadystatechange = function() {
+            if (xhrArt.readyState === XMLHttpRequest.DONE && xhrArt.status === 200) {
                 try {
-                    var resPl = JSON.parse(xhrPl.responseText)
-                    var parsedPl = parseJellyfinItems(resPl.Items || [])
-                    if (parsedPl.length > 0) {
-                        playlistsList = parsedPl
+                    var resArt = JSON.parse(xhrArt.responseText)
+                    var rawArt = resArt.Items || (Array.isArray(resArt) ? resArt : [])
+                    if (rawArt.length > 0) {
+                        var parsedArt = parseJellyfinItems(rawArt)
+                        artistsList = parsedArt
+                        setCachedData("artists", parsedArt, 300000)
+                        console.log("[JELLYFIN API] Loaded " + parsedArt.length + " Artists from Jellyfin")
                     }
                 } catch (e) {
-                    console.log("[JELLYFIN API ERROR] Playlists endpoint fail: " + e)
+                    console.log("[JELLYFIN API ERROR] Artists endpoint fail: " + e)
                 }
             }
         }
-        xhrPl.send()
+        xhrArt.send()
+    }
+
+    function fetchPlaylistItems(playlistId, callback) {
+        if (!liveServerUrl || !userId || !playlistId) {
+            if (callback) callback([])
+            return
+        }
+        var cached = getCachedData("playlist_" + playlistId)
+        if (cached && cached.length > 0) {
+            if (callback) callback(cached)
+            return
+        }
+        var xhr = new XMLHttpRequest()
+        var url = liveServerUrl + "/Playlists/" + playlistId + "/Items?userId=" + userId + "&UserId=" + userId + "&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
+        xhr.open("GET", url)
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var rawItems = res.Items || (Array.isArray(res) ? res : [])
+                        if (rawItems.length > 0) {
+                            var parsed = parseJellyfinItems(rawItems)
+                            setCachedData("playlist_" + playlistId, parsed, 300000)
+                            console.log("[JELLYFIN API SUCCESS] Playlist items loaded from Jellyfin for " + playlistId + ": " + parsed.length)
+                            if (callback) callback(parsed)
+                            return
+                        }
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] Playlist items parse fail: " + e)
+                    }
+                }
+                fetchItemsByParentId(playlistId, callback)
+            }
+        }
+        xhr.send()
+    }
+
+    function fetchItemsByParentId(parentId, callback) {
+        if (!liveServerUrl || !userId || !parentId) {
+            if (callback) callback([])
+            return
+        }
+        var xhr = new XMLHttpRequest()
+        var url = liveServerUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
+        xhr.open("GET", url)
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var rawItems = res.Items || (Array.isArray(res) ? res : [])
+                        if (rawItems.length > 0) {
+                            var parsed = parseJellyfinItems(rawItems)
+                            setCachedData("playlist_" + parentId, parsed, 300000)
+                            console.log("[JELLYFIN API SUCCESS] Items loaded via ParentId for " + parentId + ": " + parsed.length)
+                            if (callback) callback(parsed)
+                            return
+                        }
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] ParentId query parse fail: " + e)
+                    }
+                }
+                fetchItemsByParentIdDirect(parentId, callback)
+            }
+        }
+        xhr.send()
+    }
+
+    function fetchItemsByParentIdDirect(parentId, callback) {
+        if (!liveServerUrl || !userId || !parentId) {
+            if (callback) callback([])
+            return
+        }
+        var xhr = new XMLHttpRequest()
+        var url = liveServerUrl + "/Items?ParentId=" + parentId + "&UserId=" + userId + "&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
+        xhr.open("GET", url)
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var rawItems = res.Items || (Array.isArray(res) ? res : [])
+                        if (rawItems.length > 0) {
+                            var parsed = parseJellyfinItems(rawItems)
+                            setCachedData("playlist_" + parentId, parsed, 300000)
+                            console.log("[JELLYFIN API SUCCESS] Direct ParentId loaded " + parsed.length + " items for " + parentId)
+                            if (callback) callback(parsed)
+                            return
+                        }
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] Direct ParentId parse fail: " + e)
+                    }
+                }
+                if (callback) callback([])
+            }
+        }
+        xhr.send()
     }
 
     function fetchRecentlyAdded() {
