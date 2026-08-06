@@ -527,6 +527,70 @@ func TestShowPlayButtonAndNextUpVisibility(t *testing.T) {
 	}
 }
 
+// TestMusicAndArtistMediaSeparation verifies that Music and Artists in Bigfin
+// are cleanly decoupled from Movie defaults and display correct metadata.
+func TestMusicAndArtistMediaSeparation(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	appDataContent := string(appDataBytes)
+
+	// 1. Verify Artists in artistsList do not use movie poster SVGs
+	moviePosters := []string{"interstellar.svg", "bladerunner.svg", "dune2.svg", "mandalorian.svg", "breakingbad.svg", "matrix.svg"}
+	artistsSection := ""
+	if idx := strings.Index(appDataContent, "property var artistsList:"); idx != -1 {
+		artistsSection = appDataContent[idx : idx+600]
+	}
+	for _, mp := range moviePosters {
+		if strings.Contains(artistsSection, mp) {
+			t.Errorf("artistsList in AppData.qml still references movie poster %s for an artist!", mp)
+		}
+	}
+
+	// 2. Verify DetailsView.qml hides movie specs and IMDb links for music
+	detailsPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	detailsBytes, err := os.ReadFile(detailsPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+	detailsContent := string(detailsBytes)
+
+	if !strings.Contains(detailsContent, "visible: detailsView.isEpisode || (!detailsView.isSeries && !detailsView.isMusic)") {
+		t.Errorf("DetailsView.qml must hide Technical Specs table when detailsView.isMusic is true!")
+	}
+	if !strings.Contains(detailsContent, "visible: !detailsView.isMusic") {
+		t.Errorf("DetailsView.qml must hide IMDb/TMDB links when detailsView.isMusic is true!")
+	}
+	if !strings.Contains(detailsContent, "if (t === \"MusicArtist\") return \"Artist\"") {
+		t.Errorf("DetailsView.qml missing Artist media type label formatting!")
+	}
+
+	if !strings.Contains(detailsContent, "visible: !detailsView.isPlaylist") {
+		t.Errorf("DetailsView.qml must hide Genres for playlists (visible: !detailsView.isPlaylist)!")
+	}
+	if strings.Contains(detailsContent, "\"Playlist Tracks\"") {
+		t.Errorf("DetailsView.qml still references 'Playlist Tracks'! Must replace 'Tracks' with 'Songs'.")
+	}
+
+	// 3. Verify SearchView.qml placeholder and music item label handling
+	searchPath := filepath.Join("..", "..", "ui", "qml", "SearchView.qml")
+	searchBytes, err := os.ReadFile(searchPath)
+	if err != nil {
+		t.Fatalf("Failed to read SearchView.qml: %v", err)
+	}
+	searchContent := string(searchBytes)
+
+	if !strings.Contains(searchContent, "Search Movies, TV Shows, Music, Artists...") {
+		t.Errorf("SearchView.qml placeholder text must include Music and Artists!")
+	}
+	if !strings.Contains(searchContent, "isMusicItem ?") {
+		t.Errorf("SearchView.qml missing isMusicItem check for formatting search result subtitles!")
+	}
+}
+
+
 
 
 

@@ -90,7 +90,7 @@ Item {
             var artStr = ep.subtitle || ep.artist || ep.albumArtist || ""
             var dur = ep.duration || ""
             if (artStr && dur) return artStr + " • " + dur
-            return artStr || dur || "Track"
+            return artStr || dur || "Song"
         }
         var sNum = ep.seasonNumber || 1
         var eNum = ep.episodeNumber || ""
@@ -350,18 +350,57 @@ Item {
     }
 
     function loadDemoPlaylistTracks() {
+        var name = item ? (item.title || "Music") : "Music"
+        var rType = getItemType()
         var demoArt = item ? (item.posterUrl || item.backdropUrl || "assets/posters/sabaton.svg") : "assets/posters/sabaton.svg"
-        var playlistName = item ? (item.title || "Playlist") : "Playlist"
-        var demoTracks = [
-            { id: "tr_1", title: "1. Midnight City", episodeName: "Midnight City", episodeNumber: "1", mediaType: "Audio", duration: "4m 03s", subtitle: "M83 • Hurry Up, We're Dreaming", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
-            { id: "tr_2", title: "2. Starboy", episodeName: "Starboy", episodeNumber: "2", mediaType: "Audio", duration: "3m 50s", subtitle: "The Weeknd • Starboy", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
-            { id: "tr_3", title: "3. Blinding Lights", episodeName: "Blinding Lights", episodeNumber: "3", mediaType: "Audio", duration: "3m 20s", subtitle: "The Weeknd • After Hours", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
-            { id: "tr_4", title: "4. Get Lucky", episodeName: "Get Lucky", episodeNumber: "4", mediaType: "Audio", duration: "4m 08s", subtitle: "Daft Punk • Random Access Memories", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
-            { id: "tr_5", title: "5. Resonating Echoes", episodeName: "Resonating Echoes", episodeNumber: "5", mediaType: "Audio", duration: "3m 45s", subtitle: "Synthetix • Cyber City", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false },
-            { id: "tr_6", title: "6. Neon Nights", episodeName: "Neon Nights", episodeNumber: "6", mediaType: "Audio", duration: "4m 15s", subtitle: "Solar Wave • Retrowave Essentials", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt, isPlayed: false }
-        ]
+        var demoTracks = []
+
+        if (name === "The Beatles" || name.indexOf("Beatles") !== -1) {
+            demoTracks = [
+                { id: "tr_b1", title: "1. Here Comes the Sun", episodeName: "Here Comes the Sun", episodeNumber: "1", mediaType: "Audio", duration: "3m 05s", subtitle: "The Beatles • Abbey Road", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_b2", title: "2. Hey Jude", episodeName: "Hey Jude", episodeNumber: "2", mediaType: "Audio", duration: "7m 11s", subtitle: "The Beatles • Hey Jude", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_b3", title: "3. Let It Be", episodeName: "Let It Be", episodeNumber: "3", mediaType: "Audio", duration: "4m 03s", subtitle: "The Beatles • Let It Be", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_b4", title: "4. Yesterday", episodeName: "Yesterday", episodeNumber: "4", mediaType: "Audio", duration: "2m 05s", subtitle: "The Beatles • Help!", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_b5", title: "5. Come Together", episodeName: "Come Together", episodeNumber: "5", mediaType: "Audio", duration: "4m 19s", subtitle: "The Beatles • Abbey Road", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt }
+            ]
+        } else if (name === "Alan Menken" || name.indexOf("Menken") !== -1) {
+            demoTracks = [
+                { id: "tr_a1", title: "1. A Whole New World", episodeName: "A Whole New World", episodeNumber: "1", mediaType: "Audio", duration: "2m 40s", subtitle: "Alan Menken • Aladdin", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_a2", title: "2. Under the Sea", episodeName: "Under the Sea", episodeNumber: "2", mediaType: "Audio", duration: "3m 15s", subtitle: "Alan Menken • The Little Mermaid", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_a3", title: "3. Beauty and the Beast", episodeName: "Beauty and the Beast", episodeNumber: "3", mediaType: "Audio", duration: "2m 44s", subtitle: "Alan Menken • Beauty and the Beast", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_a4", title: "4. Part of Your World", episodeName: "Part of Your World", episodeNumber: "4", mediaType: "Audio", duration: "3m 13s", subtitle: "Alan Menken • The Little Mermaid", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt }
+            ]
+        } else if (name === "Sabaton" || name.indexOf("Sabaton") !== -1 || name === "Stories from the Western Front") {
+            demoTracks = [
+                { id: "tr_s1", title: "1. The Last Stand", episodeName: "The Last Stand", episodeNumber: "1", mediaType: "Audio", duration: "3m 58s", subtitle: "Sabaton • The Last Stand", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+                { id: "tr_s2", title: "2. To Hell and Back", episodeName: "To Hell and Back", episodeNumber: "2", mediaType: "Audio", duration: "3m 25s", subtitle: "Sabaton • Heroes", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+                { id: "tr_s3", title: "3. Primo Victoria", episodeName: "Primo Victoria", episodeNumber: "3", mediaType: "Audio", duration: "4m 10s", subtitle: "Sabaton • Primo Victoria", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+                { id: "tr_s4", title: "4. Bismarck", episodeName: "Bismarck", episodeNumber: "4", mediaType: "Audio", duration: "5m 14s", subtitle: "Sabaton • Bismarck", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" }
+            ]
+        } else if (name === "B.B. King" || name.indexOf("B.B. King") !== -1) {
+            demoTracks = [
+                { id: "tr_k1", title: "1. The Thrill Is Gone", episodeName: "The Thrill Is Gone", episodeNumber: "1", mediaType: "Audio", duration: "5m 24s", subtitle: "B.B. King • Completely Well", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_k2", title: "2. Lucille", episodeName: "Lucille", episodeNumber: "2", mediaType: "Audio", duration: "10m 16s", subtitle: "B.B. King • Lucille", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_k3", title: "3. Sweet Little Angel", episodeName: "Sweet Little Angel", episodeNumber: "3", mediaType: "Audio", duration: "3m 48s", subtitle: "B.B. King • Live at the Regal", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt }
+            ]
+        } else if (name === "American Pie" || name.indexOf("Don McLean") !== -1) {
+            demoTracks = [
+                { id: "tr_ap1", title: "1. American Pie", episodeName: "American Pie", episodeNumber: "1", mediaType: "Audio", duration: "8m 33s", subtitle: "Don McLean • American Pie", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+                { id: "tr_ap2", title: "2. Vincent (Starry Starry Night)", episodeName: "Vincent", episodeNumber: "2", mediaType: "Audio", duration: "4m 00s", subtitle: "Don McLean • American Pie", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+                { id: "tr_ap3", title: "3. Castles in the Air", episodeName: "Castles in the Air", episodeNumber: "3", mediaType: "Audio", duration: "3m 43s", subtitle: "Don McLean • Tapestry", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" }
+            ]
+        } else {
+            var artName = (item && (item.artist || item.subtitle || item.title)) ? (item.artist || item.subtitle || item.title) : "Artist"
+            demoTracks = [
+                { id: "tr_g1", title: "1. Essential Song 1", episodeName: "Essential Song 1", episodeNumber: "1", mediaType: "Audio", duration: "3m 45s", subtitle: artName + " • Songs", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_g2", title: "2. Essential Song 2", episodeName: "Essential Song 2", episodeNumber: "2", mediaType: "Audio", duration: "4m 12s", subtitle: artName + " • Songs", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
+                { id: "tr_g3", title: "3. Essential Song 3", episodeName: "Essential Song 3", episodeNumber: "3", mediaType: "Audio", duration: "3m 30s", subtitle: artName + " • Songs", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt }
+            ]
+        }
+
+        var headerTitle = rType === "MusicArtist" ? (name + " Songs") : (rType === "MusicAlbum" ? (name + " Songs") : (name + " Songs"))
         seasonsWithEpisodes = [
-            { id: "pl_tracks", seasonNumber: 1, title: playlistName + " Songs", episodes: demoTracks, childCount: demoTracks.length }
+            { id: "pl_tracks", seasonNumber: 1, title: headerTitle, episodes: demoTracks, childCount: demoTracks.length }
         ]
     }
 
@@ -475,10 +514,6 @@ Item {
                     if (nextEp) nextUpEpisode = nextEp
                 })
 
-                // DYNAMIC & LAZY LOADING PIPELINE:
-                // 1. Fetch seasons listing first (fast metadata call)
-                // 2. Fetch & render initial active season immediately so user sees Season 1 right away
-                // 3. Load remaining seasons in background asynchronously
                 AppData.fetchSeasons(sId, function(seasons) {
                     if (seasons && seasons.length > 0) {
                         seasonsList = seasons
@@ -502,7 +537,6 @@ Item {
                             }
                         })
                     } else {
-                        // Fallback to bulk episode fetch
                         AppData.fetchEpisodes(sId, "", function(allEps) {
                             if (detailsView.getSeriesId() !== sId) return
                             if (allEps && allEps.length > 0) {
@@ -527,25 +561,44 @@ Item {
                     seasonsWithEpisodes = []
                 }
             })
-        } else if (detailsView.isMusic || resolvedType === "Playlist" || resolvedType === "MusicAlbum") {
+        } else if (detailsView.isMusic || resolvedType === "Playlist" || resolvedType === "MusicAlbum" || resolvedType === "MusicArtist") {
             var plId = item ? (item.id || item.Id || (item.rawData ? item.rawData.Id : "")) : ""
             if (plId !== "" && AppData.liveServerUrl && AppData.userId) {
-                AppData.fetchPlaylistItems(plId, function(tracks) {
-                    if (tracks && tracks.length > 0) {
-                        var trackGroup = {
-                            id: plId,
-                            seasonNumber: 1,
-                            title: (item.title || "Playlist") + " Tracks",
-                            episodes: tracks,
-                            childCount: tracks.length
+                if (resolvedType === "MusicArtist" && AppData.fetchArtistItems) {
+                    AppData.fetchArtistItems(plId, function(tracks) {
+                        if (tracks && tracks.length > 0) {
+                            var trackGroup = {
+                                id: plId,
+                                seasonNumber: 1,
+                                title: (item.title || "Artist") + " Songs",
+                                episodes: tracks,
+                                childCount: tracks.length
+                            }
+                            seasonsWithEpisodes = [trackGroup]
+                        } else if (AppData.isConnectedToLiveServer) {
+                            seasonsWithEpisodes = []
+                        } else {
+                            loadDemoPlaylistTracks()
                         }
-                        seasonsWithEpisodes = [trackGroup]
-                    } else if (AppData.isConnectedToLiveServer) {
-                        seasonsWithEpisodes = []
-                    } else {
-                        loadDemoPlaylistTracks()
-                    }
-                })
+                    })
+                } else {
+                    AppData.fetchPlaylistItems(plId, function(tracks) {
+                        if (tracks && tracks.length > 0) {
+                            var trackGroup = {
+                                id: plId,
+                                seasonNumber: 1,
+                                title: (item.title || "Playlist") + " Songs",
+                                episodes: tracks,
+                                childCount: tracks.length
+                            }
+                            seasonsWithEpisodes = [trackGroup]
+                        } else if (AppData.isConnectedToLiveServer) {
+                            seasonsWithEpisodes = []
+                        } else {
+                            loadDemoPlaylistTracks()
+                        }
+                    })
+                }
             } else if (AppData.isConnectedToLiveServer) {
                 seasonsWithEpisodes = []
             } else {
@@ -640,13 +693,24 @@ Item {
                     Layout.preferredWidth: 300
                     Layout.preferredHeight: detailsView.isMusic ? 300 : 450
                     radius: 16
-                    color: "#0f172a"
+                    color: {
+                        if (detailsView.itemType === "MusicArtist" && (!detailsView.item || !detailsView.item.posterUrl)) {
+                            var colors = ["#7c3aed", "#6366f1", "#059669", "#d97706", "#dc2626", "#4f46e5", "#0d9488"]
+                            var hash = 0
+                            var str = (detailsView.item ? detailsView.item.title : "") || "Artist"
+                            for (var c = 0; c < str.length; c++) hash = str.charCodeAt(c) + ((hash << 5) - hash)
+                            return colors[Math.abs(hash) % colors.length]
+                        }
+                        return "#0f172a"
+                    }
                     border.color: AppData.currentTheme.accent
                     border.width: 2
                     clip: true
 
                     Image {
+                        id: detailsPosterImg
                         anchors.fill: parent
+                        visible: !(detailsView.itemType === "MusicArtist" && (!detailsView.item || !detailsView.item.posterUrl || detailsPosterImg.status !== Image.Ready))
                         source: (detailsView.item && (detailsView.item.posterUrl || detailsView.item.backdropUrl)) ? (detailsView.item.posterUrl || detailsView.item.backdropUrl) : ""
                         fillMode: Image.PreserveAspectFit
                         verticalAlignment: Image.AlignVCenter
@@ -654,6 +718,32 @@ Item {
                         smooth: true
                         asynchronous: true
                         cache: true
+                    }
+
+                    // Fallback Silhouette Badge for Artists
+                    Item {
+                        anchors.centerIn: parent
+                        width: 120
+                        height: 120
+                        visible: detailsView.itemType === "MusicArtist" && (!detailsView.item || !detailsView.item.posterUrl || detailsPosterImg.status !== Image.Ready)
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: 10
+                            width: 48
+                            height: 48
+                            radius: 24
+                            color: "#ffffff"
+                        }
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: 65
+                            width: 90
+                            height: 50
+                            radius: 25
+                            color: "#ffffff"
+                        }
                     }
                 }
 
@@ -679,11 +769,11 @@ Item {
                     // Subtitle (Season & Episode info if Episode, Content Rating if Series)
                     RowLayout {
                         spacing: 12
-                        visible: detailsView.isEpisode || (detailsView.item && detailsView.item.officialRating)
+                        visible: detailsView.isEpisode || (detailsView.item && detailsView.item.officialRating && !detailsView.isMusic)
 
                         // Content Rating Pill (e.g. TV-Y7, TV-14, TV-MA)
                         Rectangle {
-                            visible: detailsView.item && detailsView.item.officialRating !== ""
+                            visible: detailsView.item && detailsView.item.officialRating !== "" && !detailsView.isMusic
                             width: 65
                             height: 24
                             radius: 4
@@ -747,6 +837,26 @@ Item {
                                     var dur = detailsView.item.duration || "22m"
                                     var endsAt = detailsView.getEndsAtString(dur)
                                     return date + "   " + dur + "   " + endsAt
+                                }
+                                if (detailsView.isMusic) {
+                                    var t = detailsView.itemType
+                                    if (t === "MusicArtist") return "Artist"
+                                    if (t === "Playlist") return (detailsView.item.subtitle || "Playlist")
+                                    if (t === "MusicAlbum") {
+                                        var albParts = []
+                                        if (detailsView.item.artist || detailsView.item.albumArtist) albParts.push(detailsView.item.artist || detailsView.item.albumArtist)
+                                        if (detailsView.item.year) albParts.push(detailsView.item.year)
+                                        albParts.push("Album")
+                                        return albParts.join(" • ")
+                                    }
+                                    if (t === "Audio" || t === "MusicTrack") {
+                                        var trkParts = []
+                                        if (detailsView.item.subtitle || detailsView.item.artist) trkParts.push(detailsView.item.subtitle || detailsView.item.artist)
+                                        if (detailsView.item.duration) trkParts.push(detailsView.item.duration)
+                                        trkParts.push("Song")
+                                        return trkParts.join(" • ")
+                                    }
+                                    return "Music"
                                 }
                                 var y = detailsView.item.year || "2024"
                                 var d = detailsView.item.duration || "22m"
@@ -874,9 +984,9 @@ Item {
                         }
                     }
 
-                    // Technical Specs Table (Video, Audio, Subtitles - Matches Screenshot #1)
+                    // Technical Specs Table (Video, Audio, Subtitles - Movies/Episodes only)
                     ColumnLayout {
-                        visible: detailsView.isEpisode || !detailsView.isSeries
+                        visible: detailsView.isEpisode || (!detailsView.isSeries && !detailsView.isMusic)
                         Layout.fillWidth: true
                         Layout.topMargin: 8
                         spacing: 6
@@ -919,7 +1029,7 @@ Item {
 
                     // Overview Paragraph
                     Text {
-                        text: detailsView.item ? (detailsView.item.overview || "Jellyfin media details overview...") : ""
+                        text: detailsView.item ? (detailsView.item.overview || (detailsView.isMusic ? (detailsView.itemType === "MusicArtist" ? "Music Artist on Jellyfin" : "Music track collection") : "Jellyfin media details overview...")) : ""
                         font.pixelSize: 14
                         color: "#cbd5e1"
                         wrapMode: Text.WordWrap
@@ -930,7 +1040,7 @@ Item {
                         Layout.topMargin: 4
                     }
 
-                    // Tags & External Links & Genres (Matches Screenshot #1 & #2)
+                    // Tags & External Links & Genres
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -950,8 +1060,9 @@ Item {
                             }
                         }
 
-                        // External Links (IMDb, TMDB)
+                        // External Links (IMDb, TMDB - Movies/Shows only)
                         RowLayout {
+                            visible: !detailsView.isMusic
                             spacing: 12
                             Text { text: "IMDb"; font.pixelSize: 13; font.bold: true; color: "#fbbf24" }
                             Text { text: "TMDB"; font.pixelSize: 13; font.bold: true; color: "#38bdf8" }
@@ -962,10 +1073,11 @@ Item {
                             spacing: 20
 
                             RowLayout {
+                                visible: !detailsView.isPlaylist
                                 spacing: 8
                                 Text { text: "Genres:"; font.pixelSize: 13; font.bold: true; color: "#94a3b8" }
                                 Text {
-                                    text: detailsView.item && detailsView.item.genres ? (Array.isArray(detailsView.item.genres) ? detailsView.item.genres.join(", ") : detailsView.item.genres) : "Animation, Action, Adventure"
+                                    text: detailsView.item && detailsView.item.genres ? (Array.isArray(detailsView.item.genres) ? detailsView.item.genres.join(", ") : detailsView.item.genres) : (detailsView.isMusic ? "Pop, Rock" : "Animation, Action, Adventure")
                                     font.pixelSize: 13
                                     font.bold: true
                                     color: "#ffffff"
@@ -1211,18 +1323,18 @@ Item {
                         }
                     }
 
-                    // Header Title & Track/Episode Count
+                    // Header Title & Song/Episode Count
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: detailsView.isMusic ? (modelData.title || "Playlist Tracks") : (modelData.seasonNumber ? ("Season " + modelData.seasonNumber) : (modelData.title || "Season"))
+                            text: detailsView.isMusic ? (modelData.title || "Songs") : (modelData.seasonNumber ? ("Season " + modelData.seasonNumber) : (modelData.title || "Season"))
                             font.pixelSize: 22
                             font.bold: true
                             color: "#ffffff"
                         }
                         Item { Layout.fillWidth: true }
                         Text {
-                            text: detailsView.isMusic ? ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Tracks") : ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Episodes")
+                            text: detailsView.isMusic ? ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Songs") : ((modelData.episodes ? modelData.episodes.length : (modelData.childCount || 0)) + " Episodes")
                             font.pixelSize: 13
                             color: "#94a3b8"
                         }

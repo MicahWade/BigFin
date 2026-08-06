@@ -170,17 +170,20 @@ Item {
     // Separate Media Category Stores
     property var moviesList: []
     property var tvShowsList: []
-    property var musicList: []
+    property var musicList: [
+        { id: "alb_1", title: "Stories from the Western Front", mediaType: "MusicAlbum", artist: "Sabaton", albumArtist: "Sabaton", subtitle: "Sabaton", year: "2023", duration: "42m", posterUrl: "assets/posters/sabaton.svg", genres: ["Power Metal", "Metal"] },
+        { id: "alb_2", title: "American Pie", mediaType: "MusicAlbum", artist: "Don McLean", albumArtist: "Don McLean", subtitle: "Don McLean", year: "1971", duration: "36m", posterUrl: "assets/posters/american_pie.svg", genres: ["Folk Rock", "Pop"] }
+    ]
     property var artistsList: [
-        { id: "art_1", title: "Alan Menken", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/interstellar.svg" },
-        { id: "art_2", title: "Andra Day", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/bladerunner.svg" },
-        { id: "art_3", title: "B.B. King", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/american_pie.svg" },
+        { id: "art_1", title: "Alan Menken", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_2", title: "Andra Day", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_3", title: "B.B. King", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
         { id: "art_4", title: "Baljeet", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_5", title: "The Beatles", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/dune2.svg" },
-        { id: "art_6", title: "Bénabar", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/mandalorian.svg" },
-        { id: "art_7", title: "Black Eyed Peas", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/breakingbad.svg" },
-        { id: "art_8", title: "Boney M.", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/sabaton.svg" },
-        { id: "art_9", title: "Brad Paisley", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "assets/posters/matrix.svg" }
+        { id: "art_5", title: "The Beatles", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_6", title: "Bénabar", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_7", title: "Black Eyed Peas", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_8", title: "Boney M.", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
+        { id: "art_9", title: "Brad Paisley", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" }
     ]
     property var playlistsList: [
         {
@@ -225,7 +228,8 @@ Item {
             posterUrl: "assets/posters/american_pie.svg",
             poster1: "assets/posters/american_pie.svg",
             poster2: "assets/posters/sabaton.svg",
-            poster3: "assets/posters/bladerunner.svg"
+            poster3: "assets/posters/american_pie.svg",
+            poster4: "assets/posters/sabaton.svg"
         },
         {
             id: "pl_s2",
@@ -235,8 +239,9 @@ Item {
             subtitle: "8 Songs • Playlist",
             posterUrl: "assets/posters/sabaton.svg",
             poster1: "assets/posters/sabaton.svg",
-            poster2: "assets/posters/dune2.svg",
-            poster3: "assets/posters/mandalorian.svg"
+            poster2: "assets/posters/american_pie.svg",
+            poster3: "assets/posters/sabaton.svg",
+            poster4: "assets/posters/american_pie.svg"
         }
     ]
     property var favoritesList: []
@@ -648,7 +653,7 @@ Item {
             } else if (isSeason) {
                 displaySubtitle = (sNum !== "" ? ("Season " + sNum) : item.Name) + (childCount > 0 ? (" • " + childCount + " Episodes") : "")
             } else if (isPlaylist) {
-                displaySubtitle = item.ChildCount ? (item.ChildCount + " Tracks • Playlist") : "Playlist"
+                displaySubtitle = item.ChildCount ? (item.ChildCount + " Songs • Playlist") : "Playlist"
             } else if (isMusic) {
                 if (item.AlbumArtist) {
                     displaySubtitle = item.AlbumArtist
@@ -788,12 +793,12 @@ Item {
                 playlistType: item.PlaylistMediaType || item.MediaType || (item.Type === "Playlist" ? "Audio" : ""),
                 year: item.ProductionYear ? String(item.ProductionYear) : "2024",
                 rating: item.CommunityRating ? item.CommunityRating.toFixed(1) : "8.5",
-                duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) + "m" : "22m",
-                overview: item.Overview || "Jellyfin media stream",
+                duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) + "m" : (isMusic ? "3m 45s" : "22m"),
+                overview: item.Overview || (isMusic ? (item.Type === "MusicArtist" ? "Music Artist" : "Jellyfin music collection") : "Jellyfin media stream"),
                 posterUrl: poster,
                 backdropUrl: backdrop,
                 thumbUrl: isEpisode ? epThumb : backdrop,
-                genres: item.Genres || ["Animation", "Action", "Adventure"],
+                genres: (item.Genres && item.Genres.length > 0) ? item.Genres : (isMusic ? ["Music"] : ["Animation", "Action", "Adventure"]),
                 isFavorite: item.UserData ? item.UserData.IsFavorite : false,
                 isPlayed: item.UserData ? item.UserData.Played : false,
                 progress: (item.UserData && item.UserData.PlayedPercentage) ? (item.UserData.PlayedPercentage / 100) : 0,
@@ -802,9 +807,9 @@ Item {
                 tags: tagsStr,
                 externalUrls: externalUrls,
                 people: peopleList,
-                videoSpec: videoSpec,
-                audioSpec: audioSpec,
-                subtitlesSpec: subtitlesSpec,
+                videoSpec: isMusic ? "" : videoSpec,
+                audioSpec: isMusic ? (item.MediaSources && item.MediaSources.length > 0 ? audioSpec : "Audio Stream") : audioSpec,
+                subtitlesSpec: isMusic ? [] : subtitlesSpec,
                 premiereDate: item.PremiereDate ? item.PremiereDate.substring(0, 10) : "",
                 childCount: childCount,
                 recursiveItemCount: recursiveItemCount,
@@ -1453,6 +1458,37 @@ Item {
         mediaGrid = combined
     }
 
+    function fetchArtistItems(artistId, callback) {
+        if (!liveServerUrl || !userId || !artistId) {
+            if (callback) callback([])
+            return
+        }
+        var cacheKey = "artist_items_" + artistId
+        var cached = getCachedData(cacheKey)
+        if (cached) {
+            if (callback) callback(cached)
+            return
+        }
+        var xhr = new XMLHttpRequest()
+        var url = liveServerUrl + "/Users/" + userId + "/Items?ArtistIds=" + artistId + "&Recursive=true&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
+        xhr.open("GET", url)
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText)
+                    var rawItems = res.Items || (Array.isArray(res) ? res : [])
+                    var parsed = parseJellyfinItems(rawItems)
+                    setCachedData(cacheKey, parsed, 300000)
+                    if (callback) callback(parsed)
+                } catch (e) {
+                    if (callback) callback([])
+                }
+            }
+        }
+        xhr.send()
+    }
+
     function searchJellyfin(query, callback) {
         if (!liveServerUrl || !userId) return
         var cacheKey = "search_" + query.toLowerCase().trim()
@@ -1463,7 +1499,7 @@ Item {
             return
         }
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Movie,Series,Episode,Audio&Fields=PrimaryImageAspectRatio,Overview,CommunityRating,RunTimeTicks,ProductionYear,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=40"
+        var url = liveServerUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Movie,Series,Episode,Audio,MusicAlbum,MusicArtist,Playlist&Fields=PrimaryImageAspectRatio,Overview,CommunityRating,RunTimeTicks,ProductionYear,ChildCount,RecursiveItemCount,ParentIndexNumber,IndexNumber,SeriesName,SeriesId,SeasonId&Limit=40"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 

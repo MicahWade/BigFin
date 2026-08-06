@@ -10,8 +10,14 @@ Item {
     signal requestSidebarFocus()
 
     property string categoryFilter: "movies"
-    property string musicSubFilter: "playlists"
+    property string musicSubFilter: "albums"
     property bool playlistsExpanded: true
+
+    function getMusicSubTabIndex(filter) {
+        var opts = ["albums", "artists", "playlists", "songs"]
+        var idx = opts.indexOf(filter)
+        return idx >= 0 ? idx : 0
+    }
 
     onCategoryFilterChanged: {
         playlistsExpanded = true
@@ -100,9 +106,10 @@ Item {
             Repeater {
                 id: musicSubTabBarRepeater
                 model: [
-                    { id: "songs", name: "Songs" },
+                    { id: "albums", name: "Albums" },
                     { id: "artists", name: "Artists" },
-                    { id: "playlists", name: "Playlists" }
+                    { id: "playlists", name: "Playlists" },
+                    { id: "songs", name: "Songs" }
                 ]
 
                 delegate: Rectangle {
@@ -208,7 +215,7 @@ Item {
                 if (columns <= 0) columns = 1
                 if (currentIndex < columns) {
                     if (categoryFilter === "music") {
-                        var activeIdx = (gridView.musicSubFilter === "artists") ? 1 : ((gridView.musicSubFilter === "playlists") ? 2 : 0)
+                        var activeIdx = gridView.getMusicSubTabIndex(gridView.musicSubFilter)
                         var targetTab = musicSubTabBarRepeater.itemAt(activeIdx)
                         if (targetTab) {
                             targetTab.forceActiveFocus()
@@ -247,8 +254,11 @@ Item {
                             }
                         }
                         return songsOnly.length > 0 ? songsOnly : rawMusicS
+                    } else if (musicSubFilter === "albums") {
+                        var albOnly = AppData.musicList.filter(function(a){ return a.mediaType === "MusicAlbum" || a.Type === "MusicAlbum" })
+                        return albOnly.length > 0 ? albOnly : AppData.musicList
                     } else {
-                        return gridView.playlistsList
+                        return AppData.musicList.length > 0 ? AppData.musicList : gridView.playlistsList
                     }
                 } else if (categoryFilter === "favorites") {
                     return AppData.favoritesList.length > 0 ? AppData.favoritesList : AppData.mediaGrid.filter(function(i){ return i.isFavorite })
@@ -510,7 +520,7 @@ Item {
                         if (columns <= 0) columns = 1
                         if (index < columns) {
                             if (categoryFilter === "music") {
-                                var activeIdx = (gridView.musicSubFilter === "artists") ? 1 : ((gridView.musicSubFilter === "playlists") ? 2 : 0)
+                                var activeIdx = gridView.getMusicSubTabIndex(gridView.musicSubFilter)
                                 var targetTab = musicSubTabBarRepeater.itemAt(activeIdx)
                                 if (!targetTab) targetTab = musicSubTabBarRepeater.itemAt(0)
                                 if (targetTab) {

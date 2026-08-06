@@ -44,7 +44,7 @@ Item {
                 TextField {
                     id: searchInput
                     Layout.fillWidth: true
-                    placeholderText: "Search Movies, TV Shows, Directors, Genres..."
+                    placeholderText: "Search Movies, TV Shows, Music, Artists..."
                     placeholderTextColor: "#64748b"
                     font.pixelSize: 18
                     color: "#ffffff"
@@ -197,7 +197,7 @@ Item {
                         }
 
                         Text {
-                            text: (modelData.mediaType === "Series" || modelData.mediaType === "Episode") ? (modelData.subtitle || modelData.seasonsEpisodesStr || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration)
+                            text: isMusicItem ? (modelData.subtitle || (modelData.mediaType === "MusicArtist" ? "Artist" : (modelData.mediaType === "Playlist" ? "Playlist" : "Music"))) : ((modelData.mediaType === "Series" || modelData.mediaType === "Episode") ? (modelData.subtitle || modelData.seasonsEpisodesStr || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration))
                             font.pixelSize: 11
                             color: searchCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                             elide: Text.ElideRight
