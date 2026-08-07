@@ -563,12 +563,12 @@ func TestMusicAndArtistMediaSeparation(t *testing.T) {
 	if !strings.Contains(detailsContent, "visible: !detailsView.isMusic") {
 		t.Errorf("DetailsView.qml must hide IMDb/TMDB links when detailsView.isMusic is true!")
 	}
-	if !strings.Contains(detailsContent, "if (t === \"MusicArtist\") return \"Artist\"") {
+	if !strings.Contains(detailsContent, `if (t === "MusicArtist")`) {
 		t.Errorf("DetailsView.qml missing Artist media type label formatting!")
 	}
 
-	if !strings.Contains(detailsContent, "visible: !detailsView.isPlaylist") {
-		t.Errorf("DetailsView.qml must hide Genres for playlists (visible: !detailsView.isPlaylist)!")
+	if !strings.Contains(detailsContent, "visible: !detailsView.isMusic") {
+		t.Errorf("DetailsView.qml must hide Genres for music (visible: !detailsView.isMusic)!")
 	}
 	if strings.Contains(detailsContent, "\"Playlist Tracks\"") {
 		t.Errorf("DetailsView.qml still references 'Playlist Tracks'! Must replace 'Tracks' with 'Songs'.")
@@ -589,6 +589,152 @@ func TestMusicAndArtistMediaSeparation(t *testing.T) {
 		t.Errorf("SearchView.qml missing isMusicItem check for formatting search result subtitles!")
 	}
 }
+
+// TestMusicTabAlbumRemovalAndSimilarSongs verifies that:
+// 1. GridView.qml removes Albums from the music sub-filter tab bar.
+// 2. DetailsView.qml hides Genres for music (visible: !detailsView.isMusic).
+// 3. DetailsView.qml implements loadSimilarSongs and renders 5 similar song options.
+func TestMusicTabAlbumRemovalAndSimilarSongs(t *testing.T) {
+	gridPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridBytes, err := os.ReadFile(gridPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+	gridContent := string(gridBytes)
+
+	if strings.Contains(gridContent, `{ id: "albums", name: "Albums" }`) {
+		t.Errorf("GridView.qml still contains Albums sub-tab filter!")
+	}
+
+	detailsPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	detailsBytes, err := os.ReadFile(detailsPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+	detailsContent := string(detailsBytes)
+
+	if !strings.Contains(detailsContent, `visible: !detailsView.isMusic`) {
+		t.Errorf("DetailsView.qml missing check to hide Genres for music!")
+	}
+
+	if !strings.Contains(detailsContent, "loadSimilarSongs()") {
+		t.Errorf("DetailsView.qml missing loadSimilarSongs() function!")
+	}
+
+	if !strings.Contains(detailsContent, `"Similar Songs"`) {
+		t.Errorf("DetailsView.qml missing 'Similar Songs' section header!")
+	}
+
+	if !strings.Contains(detailsContent, "if (final5.length === 5) break") {
+		t.Errorf("DetailsView.qml must limit similar songs to 5 options!")
+	}
+
+	if !strings.Contains(detailsContent, "id: playedBtn") || !strings.Contains(detailsContent, "visible: !detailsView.isMusic") {
+		t.Errorf("DetailsView.qml playedBtn must be hidden for music!")
+	}
+
+	if !strings.Contains(detailsContent, `ov.indexOf("Jellyfin") !== -1`) {
+		t.Errorf("DetailsView.qml must filter out generic Jellyfin overview text for music!")
+	}
+}
+
+// TestArtistSongsAndGenresRemoval verifies that:
+// 1. AppData.qml artist items include songs arrays under them and use song counts in subtitle.
+// 2. GridView.qml and DetailsView.qml remove "Music Artist" / "Artist" label under artists and show song count instead.
+// 3. DetailsView.qml completely hides Genres for music items via visible: !detailsView.isMusic.
+func TestArtistSongsAndGenresRemoval(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	appDataContent := string(appDataBytes)
+
+	if !strings.Contains(appDataContent, "songs:") {
+		t.Errorf("AppData.qml artistsList missing songs array under artists!")
+	}
+	if strings.Contains(appDataContent, `subtitle: "Artist"`) || strings.Contains(appDataContent, `subtitle: "Music Artist"`) {
+		t.Errorf("AppData.qml artistsList still contains 'Artist' or 'Music Artist' subtitle!")
+	}
+
+	detailsPath := filepath.Join("..", "..", "ui", "qml", "DetailsView.qml")
+	detailsBytes, err := os.ReadFile(detailsPath)
+	if err != nil {
+		t.Fatalf("Failed to read DetailsView.qml: %v", err)
+	}
+	detailsContent := string(detailsBytes)
+
+	if !strings.Contains(detailsContent, "visible: !detailsView.isMusic") {
+		t.Errorf("DetailsView.qml must hide Genres for all music items using visible: !detailsView.isMusic!")
+	}
+
+	gridPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridBytes, err := os.ReadFile(gridPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+	gridContent := string(gridBytes)
+
+	if !strings.Contains(gridContent, `modelData.mediaType === "MusicArtist"`) || !strings.Contains(gridContent, `Songs`) {
+		t.Errorf("GridView.qml missing logic to render songs/song count under artist cards!")
+	}
+}
+
+// TestMusicTabPreservationOnBackNavigation verifies that:
+// 1. AppData.qml includes activeMusicSubFilter property and updateMusicSubFilterForMediaItem function.
+// 2. GridView.qml initializes and updates activeMusicSubFilter with AppData.
+// 3. Main.qml preserves music subFilter state in viewHistoryStack and restores it on goBack().
+func TestMusicTabPreservationOnBackNavigation(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	appDataContent := string(appDataBytes)
+
+	if !strings.Contains(appDataContent, "property string activeMusicSubFilter") {
+		t.Errorf("AppData.qml missing activeMusicSubFilter property!")
+	}
+	if !strings.Contains(appDataContent, "updateMusicSubFilterForMediaItem") {
+		t.Errorf("AppData.qml missing updateMusicSubFilterForMediaItem function!")
+	}
+
+	gridPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridBytes, err := os.ReadFile(gridPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+	gridContent := string(gridBytes)
+
+	if !strings.Contains(gridContent, "AppData.activeMusicSubFilter") {
+		t.Errorf("GridView.qml missing AppData.activeMusicSubFilter integration!")
+	}
+
+	mainPath := filepath.Join("..", "..", "ui", "qml", "Main.qml")
+	mainBytes, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Fatalf("Failed to read Main.qml: %v", err)
+	}
+	mainContent := string(mainBytes)
+
+	if !strings.Contains(mainContent, "subFilter:") {
+		t.Errorf("Main.qml missing subFilter history stack tracking!")
+	}
+	if !strings.Contains(mainContent, "prevEntry.subFilter") {
+		t.Errorf("Main.qml missing subFilter restoration on goBack()!")
+	}
+	if !strings.Contains(mainContent, "getCurrentSpot()") {
+		t.Errorf("Main.qml missing getCurrentSpot() function for capturing item index/section spot!")
+	}
+	if !strings.Contains(gridContent, "savedIndex") {
+		t.Errorf("GridView.qml missing savedIndex property!")
+	}
+	if !strings.Contains(gridContent, "positionViewAtIndex") {
+		t.Errorf("GridView.qml missing positionViewAtIndex call for restoring grid scroll spot!")
+	}
+}
+
+
 
 
 

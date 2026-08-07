@@ -10,11 +10,61 @@ Item {
     signal requestSidebarFocus()
 
     property string categoryFilter: "movies"
-    property string musicSubFilter: "albums"
+    property string musicSubFilter: AppData.activeMusicSubFilter ? AppData.activeMusicSubFilter : "songs"
     property bool playlistsExpanded: true
 
+    onMusicSubFilterChanged: {
+        if (AppData.activeMusicSubFilter !== musicSubFilter) {
+            AppData.activeMusicSubFilter = musicSubFilter
+        }
+    }
+
+    property alias mediaGridView: mediaGridView
+    property int savedIndex: -1
+
+    onSavedIndexChanged: {
+        applySavedSpot()
+    }
+
+    function applySavedSpot() {
+        if (savedIndex >= 0 && mediaGridView && mediaGridView.count > 0) {
+            var targetIdx = Math.min(savedIndex, mediaGridView.count - 1)
+            mediaGridView.currentIndex = targetIdx
+            mediaGridView.positionViewAtIndex(targetIdx, GridView.Contain)
+        }
+    }
+
+    Connections {
+        target: mediaGridView
+        function onCountChanged() {
+            if (gridView.savedIndex >= 0) {
+                gridView.applySavedSpot()
+            }
+        }
+    }
+
+    function restoreFocus() {
+        applySavedSpot()
+        if (mediaGridView && mediaGridView.count > 0) {
+            var targetIdx = savedIndex >= 0 ? Math.min(savedIndex, mediaGridView.count - 1) : (mediaGridView.currentIndex >= 0 ? mediaGridView.currentIndex : 0)
+            mediaGridView.currentIndex = targetIdx
+            mediaGridView.positionViewAtIndex(targetIdx, GridView.Contain)
+            mediaGridView.forceActiveFocus()
+            if (mediaGridView.currentItem) mediaGridView.currentItem.forceActiveFocus()
+            return true
+        } else if (categoryFilter === "music" && musicSubTabBarRepeater) {
+            var activeIdx = getMusicSubTabIndex(musicSubFilter)
+            var targetTab = musicSubTabBarRepeater.itemAt(activeIdx)
+            if (targetTab) {
+                targetTab.forceActiveFocus()
+                return true
+            }
+        }
+        return false
+    }
+
     function getMusicSubTabIndex(filter) {
-        var opts = ["albums", "artists", "playlists", "songs"]
+        var opts = ["artists", "playlists", "songs"]
         var idx = opts.indexOf(filter)
         return idx >= 0 ? idx : 0
     }
@@ -106,7 +156,6 @@ Item {
             Repeater {
                 id: musicSubTabBarRepeater
                 model: [
-                    { id: "albums", name: "Albums" },
                     { id: "artists", name: "Artists" },
                     { id: "playlists", name: "Playlists" },
                     { id: "songs", name: "Songs" }
@@ -139,14 +188,15 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             gridView.musicSubFilter = modelData.id
+                            AppData.activeMusicSubFilter = modelData.id
                             subTabBtn.forceActiveFocus()
                         }
                     }
 
-                    Keys.onReturnPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
-                    Keys.onEnterPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
-                    Keys.onSelectPressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
-                    Keys.onSpacePressed: { gridView.musicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onReturnPressed: { gridView.musicSubFilter = modelData.id; AppData.activeMusicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onEnterPressed: { gridView.musicSubFilter = modelData.id; AppData.activeMusicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onSelectPressed: { gridView.musicSubFilter = modelData.id; AppData.activeMusicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
+                    Keys.onSpacePressed: { gridView.musicSubFilter = modelData.id; AppData.activeMusicSubFilter = modelData.id; subTabBtn.forceActiveFocus() }
 
                     Keys.onLeftPressed: function(event) {
                         if (index > 0) {
@@ -254,11 +304,8 @@ Item {
                             }
                         }
                         return songsOnly.length > 0 ? songsOnly : rawMusicS
-                    } else if (musicSubFilter === "albums") {
-                        var albOnly = AppData.musicList.filter(function(a){ return a.mediaType === "MusicAlbum" || a.Type === "MusicAlbum" })
-                        return albOnly.length > 0 ? albOnly : AppData.musicList
                     } else {
-                        return AppData.musicList.length > 0 ? AppData.musicList : gridView.playlistsList
+                        return AppData.artistsList && AppData.artistsList.length > 0 ? AppData.artistsList : gridView.playlistsList
                     }
                 } else if (categoryFilter === "favorites") {
                     return AppData.favoritesList.length > 0 ? AppData.favoritesList : AppData.mediaGrid.filter(function(i){ return i.isFavorite })
@@ -483,7 +530,7 @@ Item {
                         }
 
                         Text {
-                            text: isShowItem ? (modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)) : (modelData.subtitle || (modelData.year ? (modelData.year + " • " + modelData.duration) : "Music"))
+                            text: isShowItem ? (modelData.seasonsEpisodesStr || modelData.subtitle || (modelData.year + " • " + modelData.duration)) : ((modelData.mediaType === "MusicArtist" || modelData.Type === "MusicArtist") ? (modelData.songs && modelData.songs.length > 0 ? (modelData.songs.length + " Songs") : (modelData.subtitle && modelData.subtitle !== "Artist" && modelData.subtitle !== "Music Artist" ? modelData.subtitle : "Songs")) : (modelData.subtitle || (modelData.year ? (modelData.year + " • " + modelData.duration) : "Music")))
                             font.pixelSize: 12
                             color: gridCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                             elide: Text.ElideRight

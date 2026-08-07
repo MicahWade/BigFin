@@ -28,13 +28,28 @@ Item {
     signal connectionFailed(string errorMessage)
     signal connectionStatusChanged()
 
-    // Active User Settings State
+    // Active User Settings & Tab State
     property bool showEndsAtInSubtitle: false
     property int seasonNavModeIdx: 0
     property bool seasonNavGoesToStart: seasonNavModeIdx === 0 || seasonNavModeIdx === 2
     property bool showRatings: true
     property int ratingsCategoryIdx: 0 // 0: Movies & Shows, 1: Movies Only, 2: Shows Only, 3: All Media Types
     readonly property var ratingsCategoryOptions: ["Movies & Shows", "Movies Only", "Shows Only", "All Media Types"]
+    property string activeMusicSubFilter: "songs"
+
+    function updateMusicSubFilterForMediaItem(item) {
+        if (!item) return
+        var mType = (item.mediaType || item.Type || "").toLowerCase()
+        var pType = (item.playlistType || item.PlaylistMediaType || "").toLowerCase()
+
+        if (mType === "playlist" || pType === "playlist" || (pType === "audio" && mType === "playlist")) {
+            activeMusicSubFilter = "playlists"
+        } else if (mType === "musicartist" || mType === "artist") {
+            activeMusicSubFilter = "artists"
+        } else if (mType === "audio" || mType === "musictrack" || mType === "song") {
+            activeMusicSubFilter = "songs"
+        }
+    }
 
     function isRatingVisible(item) {
         if (!showRatings) return false
@@ -175,15 +190,56 @@ Item {
         { id: "alb_2", title: "American Pie", mediaType: "MusicAlbum", artist: "Don McLean", albumArtist: "Don McLean", subtitle: "Don McLean", year: "1971", duration: "36m", posterUrl: "assets/posters/american_pie.svg", genres: ["Folk Rock", "Pop"] }
     ]
     property var artistsList: [
-        { id: "art_1", title: "Alan Menken", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_2", title: "Andra Day", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_3", title: "B.B. King", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_4", title: "Baljeet", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_5", title: "The Beatles", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_6", title: "Bénabar", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_7", title: "Black Eyed Peas", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_8", title: "Boney M.", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" },
-        { id: "art_9", title: "Brad Paisley", mediaType: "MusicArtist", subtitle: "Artist", posterUrl: "" }
+        { id: "art_1", title: "Alan Menken", mediaType: "MusicArtist", subtitle: "5 Songs", posterUrl: "", songs: [
+            { id: "tr_a1", title: "A Whole New World", mediaType: "Audio", artist: "Alan Menken", duration: "2m 40s" },
+            { id: "tr_a2", title: "Under the Sea", mediaType: "Audio", artist: "Alan Menken", duration: "3m 15s" },
+            { id: "tr_a3", title: "Beauty and the Beast", mediaType: "Audio", artist: "Alan Menken", duration: "2m 44s" },
+            { id: "tr_a4", title: "Part of Your World", mediaType: "Audio", artist: "Alan Menken", duration: "3m 13s" },
+            { id: "tr_a5", title: "Friend Like Me", mediaType: "Audio", artist: "Alan Menken", duration: "2m 26s" }
+        ] },
+        { id: "art_2", title: "Andra Day", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_ad1", title: "Rise Up", mediaType: "Audio", artist: "Andra Day", duration: "4m 13s" },
+            { id: "tr_ad2", title: "Tigress & Tweed", mediaType: "Audio", artist: "Andra Day", duration: "3m 12s" },
+            { id: "tr_ad3", title: "Make Your Troubles Go Away", mediaType: "Audio", artist: "Andra Day", duration: "3m 45s" }
+        ] },
+        { id: "art_3", title: "B.B. King", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_k1", title: "The Thrill Is Gone", mediaType: "Audio", artist: "B.B. King", duration: "5m 24s" },
+            { id: "tr_k2", title: "Lucille", mediaType: "Audio", artist: "B.B. King", duration: "10m 16s" },
+            { id: "tr_k3", title: "Sweet Little Angel", mediaType: "Audio", artist: "B.B. King", duration: "3m 48s" }
+        ] },
+        { id: "art_4", title: "Baljeet", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_bal1", title: "Gimme a Grade", mediaType: "Audio", artist: "Baljeet", duration: "2m 15s" },
+            { id: "tr_bal2", title: "That's Math Magic", mediaType: "Audio", artist: "Baljeet", duration: "1m 55s" },
+            { id: "tr_bal3", title: "Super Computer", mediaType: "Audio", artist: "Baljeet", duration: "2m 05s" }
+        ] },
+        { id: "art_5", title: "The Beatles", mediaType: "MusicArtist", subtitle: "6 Songs", posterUrl: "", songs: [
+            { id: "tr_b1", title: "Here Comes the Sun", mediaType: "Audio", artist: "The Beatles", duration: "3m 05s" },
+            { id: "tr_b2", title: "Hey Jude", mediaType: "Audio", artist: "The Beatles", duration: "7m 11s" },
+            { id: "tr_b3", title: "Let It Be", mediaType: "Audio", artist: "The Beatles", duration: "4m 03s" },
+            { id: "tr_b4", title: "Yesterday", mediaType: "Audio", artist: "The Beatles", duration: "2m 05s" },
+            { id: "tr_b5", title: "Come Together", mediaType: "Audio", artist: "The Beatles", duration: "4m 19s" },
+            { id: "tr_b6", title: "Eleanor Rigby", mediaType: "Audio", artist: "The Beatles", duration: "2m 06s" }
+        ] },
+        { id: "art_6", title: "Bénabar", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_ben1", title: "L'Effet Papillon", mediaType: "Audio", artist: "Bénabar", duration: "3m 34s" },
+            { id: "tr_ben2", title: "Le Dîner", mediaType: "Audio", artist: "Bénabar", duration: "3m 02s" },
+            { id: "tr_ben3", title: "Quatre Murs Et Un Toit", mediaType: "Audio", artist: "Bénabar", duration: "3m 20s" }
+        ] },
+        { id: "art_7", title: "Black Eyed Peas", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_bep1", title: "I Gotta Feeling", mediaType: "Audio", artist: "Black Eyed Peas", duration: "4m 49s" },
+            { id: "tr_bep2", title: "Where Is the Love?", mediaType: "Audio", artist: "Black Eyed Peas", duration: "4m 42s" },
+            { id: "tr_bep3", title: "Pump It", mediaType: "Audio", artist: "Black Eyed Peas", duration: "3m 33s" }
+        ] },
+        { id: "art_8", title: "Boney M.", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_bon1", title: "Rasputin", mediaType: "Audio", artist: "Boney M.", duration: "4m 25s" },
+            { id: "tr_bon2", title: "Daddy Cool", mediaType: "Audio", artist: "Boney M.", duration: "3m 28s" },
+            { id: "tr_bon3", title: "Rivers of Babylon", mediaType: "Audio", artist: "Boney M.", duration: "4m 18s" }
+        ] },
+        { id: "art_9", title: "Brad Paisley", mediaType: "MusicArtist", subtitle: "3 Songs", posterUrl: "", songs: [
+            { id: "tr_bp1", title: "Mud on the Tires", mediaType: "Audio", artist: "Brad Paisley", duration: "3m 28s" },
+            { id: "tr_bp2", title: "Whiskey Lullaby", mediaType: "Audio", artist: "Brad Paisley", duration: "4m 19s" },
+            { id: "tr_bp3", title: "She's Everything", mediaType: "Audio", artist: "Brad Paisley", duration: "4m 26s" }
+        ] }
     ]
     property var playlistsList: [
         {
@@ -655,7 +711,10 @@ Item {
             } else if (isPlaylist) {
                 displaySubtitle = item.ChildCount ? (item.ChildCount + " Songs • Playlist") : "Playlist"
             } else if (isMusic) {
-                if (item.AlbumArtist) {
+                if (item.Type === "MusicArtist") {
+                    var sCnt = childCount || recursiveItemCount || (item.SongCount || 0)
+                    displaySubtitle = sCnt > 0 ? (sCnt + " Songs") : "Songs"
+                } else if (item.AlbumArtist) {
                     displaySubtitle = item.AlbumArtist
                 } else if (item.Artists && item.Artists.length > 0) {
                     displaySubtitle = item.Artists.join(" / ")
@@ -1470,7 +1529,7 @@ Item {
             return
         }
         var xhr = new XMLHttpRequest()
-        var url = liveServerUrl + "/Users/" + userId + "/Items?ArtistIds=" + artistId + "&Recursive=true&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
+        var url = liveServerUrl + "/Users/" + userId + "/Items?ArtistIds=" + artistId + "&IncludeItemTypes=Audio&Recursive=true&Fields=PrimaryImageAspectRatio,Overview,Genres,CommunityRating,RunTimeTicks,ProductionYear,UserData,Artists,ArtistItems,AlbumArtist,ChildCount"
         xhr.open("GET", url)
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
         xhr.onreadystatechange = function() {

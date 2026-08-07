@@ -9,7 +9,48 @@ Item {
     signal itemSelected(var item)
     signal requestSidebarFocus()
 
+    property alias searchResultsGrid: searchResultsGrid
     property alias defaultFocusItem: searchInput
+    property int savedIndex: -1
+
+    onSavedIndexChanged: {
+        applySavedSpot()
+    }
+
+    function applySavedSpot() {
+        if (savedIndex >= 0 && searchResultsGrid && searchResultsGrid.count > 0) {
+            var targetIdx = Math.min(savedIndex, searchResultsGrid.count - 1)
+            searchResultsGrid.currentIndex = targetIdx
+            searchResultsGrid.positionViewAtIndex(targetIdx, GridView.Contain)
+        }
+    }
+
+    Connections {
+        target: searchResultsGrid
+        function onCountChanged() {
+            if (searchView.savedIndex >= 0) {
+                searchView.applySavedSpot()
+            }
+        }
+    }
+
+    function restoreFocus() {
+        applySavedSpot()
+        if (searchResultsGrid && searchResultsGrid.count > 0 && savedIndex >= 0) {
+            var targetIdx = Math.min(savedIndex, searchResultsGrid.count - 1)
+            searchResultsGrid.currentIndex = targetIdx
+            searchResultsGrid.positionViewAtIndex(targetIdx, GridView.Contain)
+            if (searchResultsGrid.currentItem) {
+                searchResultsGrid.currentItem.forceActiveFocus()
+                return true
+            }
+        }
+        if (searchInput) {
+            searchInput.forceActiveFocus()
+            return true
+        }
+        return false
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -197,7 +238,7 @@ Item {
                         }
 
                         Text {
-                            text: isMusicItem ? (modelData.subtitle || (modelData.mediaType === "MusicArtist" ? "Artist" : (modelData.mediaType === "Playlist" ? "Playlist" : "Music"))) : ((modelData.mediaType === "Series" || modelData.mediaType === "Episode") ? (modelData.subtitle || modelData.seasonsEpisodesStr || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration))
+                            text: isMusicItem ? ((modelData.mediaType === "MusicArtist" || modelData.Type === "MusicArtist") ? (modelData.songs && modelData.songs.length > 0 ? (modelData.songs.length + " Songs") : (modelData.subtitle && modelData.subtitle !== "Artist" && modelData.subtitle !== "Music Artist" ? modelData.subtitle : "Songs")) : (modelData.subtitle || (modelData.mediaType === "Playlist" ? "Playlist" : "Music"))) : ((modelData.mediaType === "Series" || modelData.mediaType === "Episode") ? (modelData.subtitle || modelData.seasonsEpisodesStr || (modelData.year + " • " + modelData.duration)) : (modelData.year + " • " + modelData.duration))
                             font.pixelSize: 11
                             color: searchCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                             elide: Text.ElideRight

@@ -13,9 +13,29 @@ Item {
     property var defaultFocusItem: (AppData.continueWatching && AppData.continueWatching.length > 0 ? continueWatchingList : ((AppData.nextUpList && AppData.nextUpList.length > 0) ? nextUpList : (moviesList.count > 0 ? moviesList : (musicList.count > 0 ? musicList : tvList))))
     property var lastFocusedItem: null
 
+    property string savedSection: ""
+    property int savedIndex: -1
+
     function restoreFocus() {
+        if (savedSection !== "") {
+            var targetList = null
+            if (savedSection === "cw") targetList = continueWatchingList
+            else if (savedSection === "nextup") targetList = nextUpList
+            else if (savedSection === "movies") targetList = moviesList
+            else if (savedSection === "music") targetList = musicList
+            else if (savedSection === "tv") targetList = tvList
+
+            if (targetList && targetList.count > 0) {
+                var idx = savedIndex >= 0 ? Math.min(savedIndex, targetList.count - 1) : 0
+                targetList.currentIndex = idx
+                targetList.forceActiveFocus()
+                if (targetList.currentItem) targetList.currentItem.forceActiveFocus()
+                return true
+            }
+        }
         if (lastFocusedItem && lastFocusedItem.visible) {
             lastFocusedItem.forceActiveFocus()
+            if (lastFocusedItem.currentItem) lastFocusedItem.currentItem.forceActiveFocus()
             return true
         }
         var def = defaultFocusItem

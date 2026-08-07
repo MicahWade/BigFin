@@ -259,8 +259,13 @@ Item {
                             item.item = mainShell.selectedMediaItem
                         } else if (mainShell.currentView === "movies" || mainShell.currentView === "tvshows" || mainShell.currentView === "music" || mainShell.currentView === "favorites") {
                             item.categoryFilter = mainShell.currentView
+                            if (mainShell.currentView === "music") {
+                                item.musicSubFilter = AppData.activeMusicSubFilter
+                            }
                         }
-                        if (item.defaultFocusItem && !sidebarContainer.isSidebarFocused && !mainShell.showStartupServerModal) {
+                        if (item.restoreFocus && typeof item.restoreFocus === "function") {
+                            item.restoreFocus()
+                        } else if (item.defaultFocusItem && !sidebarContainer.isSidebarFocused && !mainShell.showStartupServerModal) {
                             item.defaultFocusItem.forceActiveFocus()
                         }
                     }
@@ -409,16 +414,19 @@ Item {
         function onPlayRequested(item) {
             console.log("[MAIN] Play requested for: " + (item ? item.title : "unknown"))
             mainShell.selectedMediaItem = item
+            AppData.updateMusicSubFilterForMediaItem(item)
             navigateTo("player", item)
         }
 
         function onDetailsRequested(item) {
             mainShell.selectedMediaItem = item
+            AppData.updateMusicSubFilterForMediaItem(item)
             navigateTo("details", item)
         }
 
         function onItemSelected(item) {
             mainShell.selectedMediaItem = item
+            AppData.updateMusicSubFilterForMediaItem(item)
             navigateTo("details", item)
         }
 
@@ -441,15 +449,41 @@ Item {
     }
 
     // Navigation Stack Engine
+    function getCurrentSpot() {
+        if (!viewLoader.item) return { savedIndex: -1, savedSection: "" }
+        var item = viewLoader.item
+        if (item.mediaGridView !== undefined && item.mediaGridView !== null) {
+            return { savedIndex: item.mediaGridView.currentIndex, savedSection: "" }
+        }
+        if (item.searchResultsGrid !== undefined && item.searchResultsGrid !== null) {
+            return { savedIndex: item.searchResultsGrid.currentIndex, savedSection: "" }
+        }
+        if (item.lastFocusedItem !== undefined && item.lastFocusedItem !== null) {
+            var section = ""
+            var idx = -1
+            if (item.lastFocusedItem === item.continueWatchingList) section = "cw"
+            else if (item.lastFocusedItem === item.nextUpList) section = "nextup"
+            else if (item.lastFocusedItem === item.moviesList) section = "movies"
+            else if (item.lastFocusedItem === item.musicList) section = "music"
+            else if (item.lastFocusedItem === item.tvList) section = "tv"
+            if (item.lastFocusedItem.currentIndex !== undefined) idx = item.lastFocusedItem.currentIndex
+            return { savedSection: section, savedIndex: idx }
+        }
+        return { savedIndex: -1, savedSection: "" }
+    }
+
     function navigateTo(viewId, extraData) {
         if (mainShell.currentView !== viewId) {
+            var spot = getCurrentSpot()
             var stack = mainShell.viewHistoryStack.slice()
-            stack.push(mainShell.currentView)
+            var entry = { view: mainShell.currentView, savedIndex: spot.savedIndex, savedSection: spot.savedSection, subFilter: (mainShell.currentView === "music" ? AppData.activeMusicSubFilter : "") }
+            stack.push(entry)
             mainShell.viewHistoryStack = stack
         }
 
         if (extraData) {
             mainShell.selectedMediaItem = extraData
+            AppData.updateMusicSubFilterForMediaItem(extraData)
         }
 
         mainShell.currentView = viewId
@@ -459,6 +493,9 @@ Item {
             viewLoader.source = "GridView.qml"
             if (viewLoader.item) {
                 viewLoader.item.categoryFilter = viewId
+                if (viewId === "music") {
+                    viewLoader.item.musicSubFilter = AppData.activeMusicSubFilter
+                }
             }
         } else if (viewId === "search") {
             viewLoader.source = "SearchView.qml"
@@ -490,15 +527,28 @@ Item {
     function goBack() {
         var stack = mainShell.viewHistoryStack.slice()
         if (stack.length > 0) {
-            var prevView = stack.pop()
+            var prevEntry = stack.pop()
             mainShell.viewHistoryStack = stack
+
+            var prevView = (typeof prevEntry === "object" && prevEntry !== null) ? prevEntry.view : prevEntry
+            var savedIdx = (typeof prevEntry === "object" && prevEntry !== null && prevEntry.savedIndex !== undefined) ? prevEntry.savedIndex : -1
+            var savedSec = (typeof prevEntry === "object" && prevEntry !== null && prevEntry.savedSection !== undefined) ? prevEntry.savedSection : ""
+
+            if (typeof prevEntry === "object" && prevEntry !== null && prevEntry.subFilter) {
+                AppData.activeMusicSubFilter = prevEntry.subFilter
+            }
             mainShell.currentView = prevView
 
             if (prevView === "home") {
                 viewLoader.source = "HomeView.qml"
             } else if (prevView === "movies" || prevView === "tvshows" || prevView === "music" || prevView === "favorites") {
                 viewLoader.source = "GridView.qml"
-                if (viewLoader.item) viewLoader.item.categoryFilter = prevView
+                if (viewLoader.item) {
+                    viewLoader.item.categoryFilter = prevView
+                    if (prevView === "music") {
+                        viewLoader.item.musicSubFilter = AppData.activeMusicSubFilter
+                    }
+                }
             } else if (prevView === "search") {
                 viewLoader.source = "SearchView.qml"
             } else if (prevView === "settings") {
@@ -506,7 +556,18 @@ Item {
             } else if (prevView === "details") {
                 viewLoader.source = "DetailsView.qml"
             }
-            viewLoader.forceActiveFocus()
+
+            if (viewLoader.item) {
+                if (savedIdx >= 0 && viewLoader.item.savedIndex !== undefined) viewLoader.item.savedIndex = savedIdx
+                if (savedSec !== "" && viewLoader.item.savedSection !== undefined) viewLoader.item.savedSection = savedSec
+                if (viewLoader.item.restoreFocus && typeof viewLoader.item.restoreFocus === "function") {
+                    viewLoader.item.restoreFocus()
+                } else {
+                    viewLoader.forceActiveFocus()
+                }
+            } else {
+                viewLoader.forceActiveFocus()
+            }
         } else {
             mainShell.currentView = "home"
             viewLoader.source = "HomeView.qml"

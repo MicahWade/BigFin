@@ -355,7 +355,9 @@ Item {
         var demoArt = item ? (item.posterUrl || item.backdropUrl || "assets/posters/sabaton.svg") : "assets/posters/sabaton.svg"
         var demoTracks = []
 
-        if (name === "The Beatles" || name.indexOf("Beatles") !== -1) {
+        if (item && item.songs && item.songs.length > 0) {
+            demoTracks = item.songs
+        } else if (name === "The Beatles" || name.indexOf("Beatles") !== -1) {
             demoTracks = [
                 { id: "tr_b1", title: "1. Here Comes the Sun", episodeName: "Here Comes the Sun", episodeNumber: "1", mediaType: "Audio", duration: "3m 05s", subtitle: "The Beatles • Abbey Road", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
                 { id: "tr_b2", title: "2. Hey Jude", episodeName: "Hey Jude", episodeNumber: "2", mediaType: "Audio", duration: "7m 11s", subtitle: "The Beatles • Hey Jude", posterUrl: demoArt, backdropUrl: demoArt, thumbUrl: demoArt },
@@ -401,6 +403,119 @@ Item {
         var headerTitle = rType === "MusicArtist" ? (name + " Songs") : (rType === "MusicAlbum" ? (name + " Songs") : (name + " Songs"))
         seasonsWithEpisodes = [
             { id: "pl_tracks", seasonNumber: 1, title: headerTitle, episodes: demoTracks, childCount: demoTracks.length }
+        ]
+    }
+
+    function loadSimilarSongs() {
+        var currentSongTitle = item ? (item.title || "Song") : "Song"
+        var currentArtist = item ? (item.artist || item.albumArtist || item.subtitle || "Artist") : "Artist"
+        var currentId = item ? (item.id || item.Id || "") : ""
+        var currentPoster = item ? (item.posterUrl || item.backdropUrl || "assets/posters/sabaton.svg") : "assets/posters/sabaton.svg"
+        var titleLower = currentSongTitle.toLowerCase()
+        var artistLower = currentArtist.toLowerCase()
+
+        var sabatonPool = [
+            { id: "sim_s1", title: "1916", episodeName: "1916", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 4m 00s", duration: "4m 00s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s2", title: "The Last Stand", episodeName: "The Last Stand", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 3m 58s", duration: "3m 58s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s3", title: "To Hell and Back", episodeName: "To Hell and Back", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 3m 25s", duration: "3m 25s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s4", title: "Primo Victoria", episodeName: "Primo Victoria", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 4m 10s", duration: "4m 10s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s5", title: "Bismarck", episodeName: "Bismarck", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 5m 14s", duration: "5m 14s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s6", title: "Steel Commanders", episodeName: "Steel Commanders", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 3m 51s", duration: "3m 51s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s7", title: "Night Witches", episodeName: "Night Witches", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 3m 01s", duration: "3m 01s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" },
+            { id: "sim_s8", title: "Great War", episodeName: "Great War", mediaType: "Audio", artist: "Sabaton", subtitle: "Sabaton • 4m 28s", duration: "4m 28s", posterUrl: "assets/posters/sabaton.svg", backdropUrl: "assets/posters/sabaton.svg", thumbUrl: "assets/posters/sabaton.svg" }
+        ]
+
+        var mcleanPool = [
+            { id: "sim_m1", title: "American Pie", episodeName: "American Pie", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 8m 33s", duration: "8m 33s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+            { id: "sim_m2", title: "Vincent (Starry Starry Night)", episodeName: "Vincent", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 4m 00s", duration: "4m 00s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+            { id: "sim_m3", title: "Castles in the Air", episodeName: "Castles in the Air", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 3m 43s", duration: "3m 43s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+            { id: "sim_m4", title: "And I Love You So", episodeName: "And I Love You So", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 4m 15s", duration: "4m 15s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+            { id: "sim_m5", title: "Winterwood", episodeName: "Winterwood", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 3m 12s", duration: "3m 12s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" },
+            { id: "sim_m6", title: "Empty Chairs", episodeName: "Empty Chairs", mediaType: "Audio", artist: "Don McLean", subtitle: "Don McLean • 3m 24s", duration: "3m 24s", posterUrl: "assets/posters/american_pie.svg", backdropUrl: "assets/posters/american_pie.svg", thumbUrl: "assets/posters/american_pie.svg" }
+        ]
+
+        var beatlesPool = [
+            { id: "sim_b1", title: "Here Comes the Sun", episodeName: "Here Comes the Sun", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 3m 05s", duration: "3m 05s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_b2", title: "Hey Jude", episodeName: "Hey Jude", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 7m 11s", duration: "7m 11s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_b3", title: "Let It Be", episodeName: "Let It Be", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 4m 03s", duration: "4m 03s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_b4", title: "Yesterday", episodeName: "Yesterday", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 2m 05s", duration: "2m 05s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_b5", title: "Come Together", episodeName: "Come Together", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 4m 19s", duration: "4m 19s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_b6", title: "Eleanor Rigby", episodeName: "Eleanor Rigby", mediaType: "Audio", artist: "The Beatles", subtitle: "The Beatles • 2m 06s", duration: "2m 06s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster }
+        ]
+
+        var menkenPool = [
+            { id: "sim_a1", title: "A Whole New World", episodeName: "A Whole New World", mediaType: "Audio", artist: "Alan Menken", subtitle: "Alan Menken • 2m 40s", duration: "2m 40s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_a2", title: "Under the Sea", episodeName: "Under the Sea", mediaType: "Audio", artist: "Alan Menken", subtitle: "Alan Menken • 3m 15s", duration: "3m 15s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_a3", title: "Beauty and the Beast", episodeName: "Beauty and the Beast", mediaType: "Audio", artist: "Alan Menken", subtitle: "Alan Menken • 2m 44s", duration: "2m 44s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_a4", title: "Part of Your World", episodeName: "Part of Your World", mediaType: "Audio", artist: "Alan Menken", subtitle: "Alan Menken • 3m 13s", duration: "3m 13s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster },
+            { id: "sim_a5", title: "Friend Like Me", episodeName: "Friend Like Me", mediaType: "Audio", artist: "Alan Menken", subtitle: "Alan Menken • 2m 26s", duration: "2m 26s", posterUrl: currentPoster, backdropUrl: currentPoster, thumbUrl: currentPoster }
+        ]
+
+        var pool = []
+        if (artistLower.indexOf("sabaton") !== -1 || titleLower.indexOf("1916") !== -1 || titleLower.indexOf("last stand") !== -1 || titleLower.indexOf("bismarck") !== -1) {
+            pool = sabatonPool
+        } else if (artistLower.indexOf("mclean") !== -1 || titleLower.indexOf("american pie") !== -1 || titleLower.indexOf("vincent") !== -1) {
+            pool = mcleanPool
+        } else if (artistLower.indexOf("beatles") !== -1 || titleLower.indexOf("jude") !== -1 || titleLower.indexOf("let it be") !== -1) {
+            pool = beatlesPool
+        } else if (artistLower.indexOf("menken") !== -1 || titleLower.indexOf("world") !== -1) {
+            pool = menkenPool
+        } else {
+            pool = sabatonPool.concat(mcleanPool).concat(beatlesPool)
+        }
+
+        var candidates = []
+        if (AppData.musicList && AppData.musicList.length > 0) {
+            for (var m = 0; m < AppData.musicList.length; m++) {
+                var cand = AppData.musicList[m]
+                var mType = (cand.mediaType || cand.Type || "").toLowerCase()
+                if ((mType === "audio" || mType === "musictrack" || mType === "song") && cand.id !== currentId && cand.title.toLowerCase() !== titleLower) {
+                    candidates.push({
+                        id: cand.id || ("song_" + m),
+                        title: cand.title,
+                        episodeName: cand.title,
+                        mediaType: "Audio",
+                        artist: cand.artist || cand.subtitle || currentArtist,
+                        subtitle: (cand.artist || cand.subtitle || currentArtist) + " • " + (cand.duration || "3m 45s"),
+                        duration: cand.duration || "3m 45s",
+                        posterUrl: cand.posterUrl || currentPoster,
+                        backdropUrl: cand.backdropUrl || currentPoster,
+                        thumbUrl: cand.thumbUrl || currentPoster
+                    })
+                }
+            }
+        }
+
+        for (var p = 0; p < pool.length; p++) {
+            var poolSong = pool[p]
+            if (poolSong.id !== currentId && poolSong.title.toLowerCase() !== titleLower) {
+                var exists = false
+                for (var c = 0; c < candidates.length; c++) {
+                    if (candidates[c].title.toLowerCase() === poolSong.title.toLowerCase()) {
+                        exists = true
+                        break
+                    }
+                }
+                if (!exists) {
+                    candidates.push(poolSong)
+                }
+            }
+        }
+
+        var str = currentSongTitle
+        var hash = 0
+        for (var h = 0; h < str.length; h++) hash = str.charCodeAt(h) + ((hash << 5) - hash)
+        var startIndex = Math.abs(hash) % Math.max(1, candidates.length)
+
+        var final5 = []
+        for (var k = 0; k < candidates.length; k++) {
+            var idx = (startIndex + k) % candidates.length
+            final5.push(candidates[idx])
+            if (final5.length === 5) break
+        }
+
+        seasonsWithEpisodes = [
+            { id: "similar_songs_group", seasonNumber: 1, title: "Similar Songs", episodes: final5, childCount: final5.length }
         ]
     }
 
@@ -561,6 +676,8 @@ Item {
                     seasonsWithEpisodes = []
                 }
             })
+        } else if (resolvedType === "Audio") {
+            loadSimilarSongs()
         } else if (detailsView.isMusic || resolvedType === "Playlist" || resolvedType === "MusicAlbum" || resolvedType === "MusicArtist") {
             var plId = item ? (item.id || item.Id || (item.rawData ? item.rawData.Id : "")) : ""
             if (plId !== "" && AppData.liveServerUrl && AppData.userId) {
@@ -840,7 +957,7 @@ Item {
                                 }
                                 if (detailsView.isMusic) {
                                     var t = detailsView.itemType
-                                    if (t === "MusicArtist") return "Artist"
+                                    if (t === "MusicArtist") return (detailsView.seasonsWithEpisodes && detailsView.seasonsWithEpisodes.length > 0 && detailsView.seasonsWithEpisodes[0].episodes ? detailsView.seasonsWithEpisodes[0].episodes.length + " Songs" : (detailsView.item && detailsView.item.subtitle && detailsView.item.subtitle !== "Artist" && detailsView.item.subtitle !== "Music Artist" ? detailsView.item.subtitle : "Songs"))
                                     if (t === "Playlist") return (detailsView.item.subtitle || "Playlist")
                                     if (t === "MusicAlbum") {
                                         var albParts = []
@@ -903,12 +1020,13 @@ Item {
                             Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
                             Keys.onLeftPressed: function(event) { detailsView.requestSidebarFocus(); event.accepted = true }
-                            Keys.onRightPressed: function(event) { playedBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onRightPressed: function(event) { if (playedBtn.visible) playedBtn.forceActiveFocus(); else favBtn.forceActiveFocus(); event.accepted = true }
                         }
 
                         // Mark Played / Watched Toggle Button (✓)
                         Rectangle {
                             id: playedBtn
+                            visible: !detailsView.isMusic
                             width: 48
                             height: 48
                             radius: 10
@@ -980,7 +1098,7 @@ Item {
                             }
                             Keys.onUpPressed: function(event) { backBtn.forceActiveFocus(); event.accepted = true }
                             Keys.onDownPressed: function(event) { detailsView.navigateDownFromHero(); event.accepted = true }
-                            Keys.onLeftPressed: function(event) { playedBtn.forceActiveFocus(); event.accepted = true }
+                            Keys.onLeftPressed: function(event) { if (playedBtn.visible) playedBtn.forceActiveFocus(); else playBtn.forceActiveFocus(); event.accepted = true }
                         }
                     }
 
@@ -1029,7 +1147,18 @@ Item {
 
                     // Overview Paragraph
                     Text {
-                        text: detailsView.item ? (detailsView.item.overview || (detailsView.isMusic ? (detailsView.itemType === "MusicArtist" ? "Music Artist on Jellyfin" : "Music track collection") : "Jellyfin media details overview...")) : ""
+                        text: {
+                            if (!detailsView.item) return ""
+                            var ov = detailsView.item.overview || ""
+                            if (detailsView.isMusic) {
+                                if (ov.indexOf("Jellyfin") !== -1 || ov.indexOf("collection") !== -1 || ov === "Music track collection") {
+                                    return ""
+                                }
+                                return ov
+                            }
+                            return ov
+                        }
+                        visible: text !== ""
                         font.pixelSize: 14
                         color: "#cbd5e1"
                         wrapMode: Text.WordWrap
@@ -1073,11 +1202,11 @@ Item {
                             spacing: 20
 
                             RowLayout {
-                                visible: !detailsView.isPlaylist
+                                visible: !detailsView.isMusic
                                 spacing: 8
                                 Text { text: "Genres:"; font.pixelSize: 13; font.bold: true; color: "#94a3b8" }
                                 Text {
-                                    text: detailsView.item && detailsView.item.genres ? (Array.isArray(detailsView.item.genres) ? detailsView.item.genres.join(", ") : detailsView.item.genres) : (detailsView.isMusic ? "Pop, Rock" : "Animation, Action, Adventure")
+                                    text: detailsView.item && detailsView.item.genres ? (Array.isArray(detailsView.item.genres) ? detailsView.item.genres.join(", ") : detailsView.item.genres) : "Animation, Action, Adventure"
                                     font.pixelSize: 13
                                     font.bold: true
                                     color: "#ffffff"
@@ -1362,10 +1491,10 @@ Item {
 
                         delegate: Rectangle {
                             id: musicSongCard
-                            width: 190
+                            width: 195
                             height: 245
                             radius: 12
-                            color: activeFocus ? AppData.currentTheme.focusCard : "#090d16"
+                            color: activeFocus ? AppData.currentTheme.focusCard : "#0d1322"
                             border.color: activeFocus ? AppData.currentTheme.accent : "#1e293b"
                             border.width: activeFocus ? 4 : 1
                             scale: activeFocus ? 1.03 : 1.0
@@ -1405,48 +1534,21 @@ Item {
                                         asynchronous: true
                                         cache: true
                                     }
-
-                                    // Centered Play Button Overlay
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: 44
-                                        height: 44
-                                        radius: 22
-                                        color: songPlayMouse.containsMouse ? AppData.currentTheme.accent : "#cc0f172a"
-                                        border.color: "#ffffff"
-                                        border.width: 1
-                                        z: 10
-
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 18
-                                            height: 18
-                                            source: "assets/icons/play.svg"
-                                            fillMode: Image.PreserveAspectFit
-                                        }
-
-                                        MouseArea {
-                                            id: songPlayMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            onClicked: detailsView.playRequested(modelData)
-                                        }
-                                    }
                                 }
 
                                 Text {
-                                    text: (modelData.episodeNumber ? (modelData.episodeNumber + ". ") : "") + (modelData.episodeName || modelData.title)
+                                    text: modelData.title || modelData.episodeName || ""
                                     font.pixelSize: 14
                                     font.bold: true
-                                    color: "#ffffff"
+                                    color: musicSongCard.activeFocus ? "#ffffff" : "#e2e8f0"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
 
                                 Text {
-                                    text: detailsView.getEpisodeSubtitle(modelData)
+                                    text: modelData.subtitle || (modelData.artist ? (modelData.artist + " • " + (modelData.duration || "Song")) : "Song")
                                     font.pixelSize: 12
-                                    color: "#94a3b8"
+                                    color: musicSongCard.activeFocus ? "#e2e8f0" : "#94a3b8"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -1455,10 +1557,22 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 z: 1
-                                onClicked: detailsView.playRequested(modelData)
+                                onClicked: {
+                                    if (detailsView.itemType === "Audio") {
+                                        detailsView.item = modelData
+                                    } else {
+                                        detailsView.playRequested(modelData)
+                                    }
+                                }
                             }
 
-                            Keys.onReturnPressed: detailsView.playRequested(modelData)
+                            Keys.onReturnPressed: {
+                                if (detailsView.itemType === "Audio") {
+                                    detailsView.item = modelData
+                                } else {
+                                    detailsView.playRequested(modelData)
+                                }
+                            }
                             Keys.onSpacePressed: detailsView.playRequested(modelData)
 
                             Keys.onUpPressed: function(event) {
