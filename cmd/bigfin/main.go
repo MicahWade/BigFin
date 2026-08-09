@@ -24,10 +24,10 @@ func main() {
 		log.SetOutput(multiWriter)
 	}
 
-	// Extend PATH for standalone Go execution
+	// Extend PATH for standalone Go execution and Qt6 QML tools
 	homeDir, _ := os.UserHomeDir()
 	currentPath := os.Getenv("PATH")
-	os.Setenv("PATH", currentPath+":/tmp/go_bin/go/bin:/usr/local/go/bin:"+homeDir+"/go/bin:"+homeDir+"/.local/bin")
+	os.Setenv("PATH", currentPath+":/usr/lib64/qt6/bin:/tmp/go_bin/go/bin:/usr/local/go/bin:"+homeDir+"/go/bin:"+homeDir+"/.local/bin")
 
 	serverURL := flag.String("server", "http://localhost:8096", "Jellyfin Server URL")
 	username := flag.String("user", "", "Jellyfin Username")
@@ -256,6 +256,10 @@ if not engine.rootObjects():
 sys.exit(app.exec())
 `, qmlPath}
 	} else if qmlBin, err := exec.LookPath("qmlscene"); err == nil {
+		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
+		binPath = qmlBin
+		args = []string{qmlBin, "-name", "bigfin", qmlPath}
+	} else if qmlBin, err := exec.LookPath("qmlscene-qt6"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
 		args = []string{qmlBin, "-name", "bigfin", qmlPath}
