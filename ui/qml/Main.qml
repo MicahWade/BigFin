@@ -542,6 +542,7 @@ Item {
         } else if (viewId === "player") {
             if (playerLoader.item) {
                 playerLoader.item.item = mainShell.selectedMediaItem
+                playerLoader.item.forceActiveFocus()
             }
         }
     }

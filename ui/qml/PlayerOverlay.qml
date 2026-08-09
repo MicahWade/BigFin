@@ -17,7 +17,7 @@ Item {
 
     signal closeRequested()
 
-    property var activeMedia: item ? item : AppData.featuredHero
+    property var activeMedia: item ? item : (typeof mainShell !== "undefined" && mainShell && mainShell.selectedMediaItem ? mainShell.selectedMediaItem : AppData.featuredHero)
 
     property string streamUrl: {
         if (activeMedia && activeMedia.id && AppData.liveServerUrl && AppData.accessToken) {
@@ -134,10 +134,12 @@ Item {
     Timer {
         id: autoHideTimer
         interval: 4000
-        running: true
+        running: !playerOverlay.isBuffering
         repeat: false
         onTriggered: {
-            controlsContainer.visibleControls = false
+            if (!playerOverlay.isBuffering) {
+                controlsContainer.visibleControls = false
+            }
         }
     }
 
@@ -149,6 +151,15 @@ Item {
     property bool isBuffering: mediaStreamPlayer.mediaStatus === MediaPlayer.Buffering || 
                                mediaStreamPlayer.mediaStatus === MediaPlayer.StalledMedia || 
                                mediaStreamPlayer.mediaStatus === MediaPlayer.LoadingMedia
+
+    onIsBufferingChanged: {
+        if (isBuffering) {
+            controlsContainer.visibleControls = true
+            autoHideTimer.stop()
+        } else {
+            autoHideTimer.restart()
+        }
+    }
 
     // Video Output surface (renders video with PreserveAspectFit inside black bar canvas)
     VideoOutput {
@@ -332,7 +343,6 @@ Item {
                     Keys.onReturnPressed: playerOverlay.exitPlayer()
                     Keys.onSelectPressed: playerOverlay.exitPlayer()
                     Keys.onDownPressed: playPauseBtn.forceActiveFocus()
-                    Keys.onRightPressed: windowMinimizeBtn.forceActiveFocus()
                 }
 
                 ColumnLayout {
@@ -352,140 +362,6 @@ Item {
                 }
 
                 Item { Layout.fillWidth: true }
-
-                // Desktop Window Controls (Minimize & Toggle Fullscreen)
-                RowLayout {
-                    spacing: 10
-
-                    // Minimize Window Button
-                    Rectangle {
-                        id: windowMinimizeBtn
-                        height: 36
-                        width: 105
-                        radius: 18
-                        color: activeFocus ? "#0284c7" : "#1e293b"
-                        border.color: activeFocus ? "#00f0ff" : "#475569"
-                        border.width: activeFocus ? 3 : 1
-                        scale: activeFocus ? 1.08 : 1.0
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            Text {
-                                text: "🗕"
-                                font.pixelSize: 13
-                                font.bold: true
-                                color: "#ffffff"
-                            }
-
-                            Text {
-                                text: "Minimize"
-                                font.pixelSize: 12
-                                font.bold: true
-                                color: "#ffffff"
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                wakeControls()
-                                if (typeof rootWindow !== "undefined" && rootWindow) {
-                                    rootWindow.showMinimized()
-                                }
-                            }
-                        }
-
-                        Keys.onReturnPressed: {
-                            wakeControls()
-                            if (typeof rootWindow !== "undefined" && rootWindow) {
-                                rootWindow.showMinimized()
-                            }
-                        }
-                        Keys.onSelectPressed: {
-                            wakeControls()
-                            if (typeof rootWindow !== "undefined" && rootWindow) {
-                                rootWindow.showMinimized()
-                            }
-                        }
-                        Keys.onLeftPressed: playerBackBtn.forceActiveFocus()
-                        Keys.onRightPressed: windowToggleFSBtn.forceActiveFocus()
-                        Keys.onDownPressed: playPauseBtn.forceActiveFocus()
-                    }
-
-                    // Toggle Fullscreen / Windowed Button
-                    Rectangle {
-                        id: windowToggleFSBtn
-                        height: 36
-                        width: 115
-                        radius: 18
-                        color: activeFocus ? "#0284c7" : "#1e293b"
-                        border.color: activeFocus ? "#00f0ff" : "#475569"
-                        border.width: activeFocus ? 3 : 1
-                        scale: activeFocus ? 1.08 : 1.0
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            Text {
-                                text: (typeof rootWindow !== "undefined" && rootWindow && rootWindow.visibility === 5) ? "🗗" : "🗖"
-                                font.pixelSize: 13
-                                font.bold: true
-                                color: "#ffffff"
-                            }
-
-                            Text {
-                                text: (typeof rootWindow !== "undefined" && rootWindow && rootWindow.visibility === 5) ? "Windowed" : "Fullscreen"
-                                font.pixelSize: 12
-                                font.bold: true
-                                color: "#ffffff"
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                wakeControls()
-                                if (typeof rootWindow !== "undefined" && rootWindow) {
-                                    if (rootWindow.visibility === 5) {
-                                        rootWindow.showNormal()
-                                    } else {
-                                        rootWindow.showFullScreen()
-                                    }
-                                }
-                            }
-                        }
-
-                        Keys.onReturnPressed: {
-                            wakeControls()
-                            if (typeof rootWindow !== "undefined" && rootWindow) {
-                                if (rootWindow.visibility === 5) {
-                                    rootWindow.showNormal()
-                                } else {
-                                    rootWindow.showFullScreen()
-                                }
-                            }
-                        }
-                        Keys.onSelectPressed: {
-                            wakeControls()
-                            if (typeof rootWindow !== "undefined" && rootWindow) {
-                                if (rootWindow.visibility === 5) {
-                                    rootWindow.showNormal()
-                                } else {
-                                    rootWindow.showFullScreen()
-                                }
-                            }
-                        }
-                        Keys.onLeftPressed: windowMinimizeBtn.forceActiveFocus()
-                        Keys.onDownPressed: playPauseBtn.forceActiveFocus()
-                    }
-                }
             }
         }
 
@@ -722,52 +598,11 @@ Item {
                             mediaStreamPlayer.setPosition(currentPosition * 1000)
                         }
                         Keys.onLeftPressed: playPauseBtn.forceActiveFocus()
-                        Keys.onRightPressed: audioBtn.forceActiveFocus()
+                        Keys.onRightPressed: subBtn.forceActiveFocus()
                         Keys.onUpPressed: seekTrack.forceActiveFocus()
                     }
 
                     Item { Layout.fillWidth: true }
-
-                    // Audio Track Toggle Button
-                    Rectangle {
-                        id: audioBtn
-                        height: 40
-                        width: 140
-                        radius: 20
-                        color: activeFocus ? "#0284c7" : "#1e293b"
-                        border.color: activeFocus ? "#00f0ff" : "#475569"
-                        border.width: activeFocus ? 4 : 1
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "🔊 " + activeAudioTrack
-                            font.pixelSize: 11
-                            font.bold: true
-                            color: "#ffffff"
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                wakeControls()
-                                activeAudioTrack = (activeAudioTrack.indexOf("5.1") !== -1 ? "English (Stereo)" : "English (AAC 5.1)")
-                            }
-                        }
-
-                        Keys.onReturnPressed: {
-                            wakeControls()
-                            activeAudioTrack = (activeAudioTrack.indexOf("5.1") !== -1 ? "English (Stereo)" : "English (AAC 5.1)")
-                        }
-                        Keys.onSelectPressed: {
-                            wakeControls()
-                            activeAudioTrack = (activeAudioTrack.indexOf("5.1") !== -1 ? "English (Stereo)" : "English (AAC 5.1)")
-                        }
-                        Keys.onLeftPressed: forwardBtn.forceActiveFocus()
-                        Keys.onRightPressed: subBtn.forceActiveFocus()
-                        Keys.onUpPressed: seekTrack.forceActiveFocus()
-                    }
 
                     // Subtitle Track Toggle Button
                     Rectangle {
@@ -805,7 +640,7 @@ Item {
                             wakeControls()
                             activeSubtitleTrack = (activeSubtitleTrack.indexOf("SDH") !== -1 ? "Off" : "English [SDH]")
                         }
-                        Keys.onLeftPressed: audioBtn.forceActiveFocus()
+                        Keys.onLeftPressed: forwardBtn.forceActiveFocus()
                         Keys.onUpPressed: seekTrack.forceActiveFocus()
                     }
                 }
@@ -836,7 +671,7 @@ Item {
             controlsContainer.visibleControls = !controlsContainer.visibleControls
             event.accepted = true
         } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-            if (!playPauseBtn.activeFocus && !rewindBtn.activeFocus && !forwardBtn.activeFocus && !seekTrack.activeFocus && !playerBackBtn.activeFocus && !audioBtn.activeFocus && !subBtn.activeFocus && !windowMinimizeBtn.activeFocus && !windowToggleFSBtn.activeFocus) {
+            if (!playPauseBtn.activeFocus && !rewindBtn.activeFocus && !forwardBtn.activeFocus && !seekTrack.activeFocus && !playerBackBtn.activeFocus && !subBtn.activeFocus) {
                 playPauseBtn.forceActiveFocus()
             }
         }

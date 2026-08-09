@@ -186,7 +186,6 @@ Item {
                 Keys.onReturnPressed: exitPlayer()
                 Keys.onSelectPressed: exitPlayer()
                 Keys.onDownPressed: playPauseBtn.forceActiveFocus()
-                Keys.onRightPressed: windowMinimizeBtn.forceActiveFocus()
             }
 
             // Music Title Category Badge
@@ -216,41 +215,7 @@ Item {
             }
 
             Item { Layout.fillWidth: true }
-
-            // Desktop Window Controls
-            RowLayout {
-                spacing: 10
-
-                Rectangle {
-                    id: windowMinimizeBtn
-                    height: 36
-                    width: 110
-                    radius: 18
-                    color: activeFocus ? AppData.currentTheme.focusCard : "#1e293b"
-                    border.color: activeFocus ? AppData.currentTheme.accent : "#475569"
-                    border.width: activeFocus ? 3 : 1
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 6
-                        Text { text: "🗕"; font.pixelSize: 13; font.bold: true; color: "#ffffff" }
-                        Text { text: "Minimize"; font.pixelSize: 12; font.bold: true; color: "#ffffff" }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (typeof rootWindow !== "undefined" && rootWindow) rootWindow.showMinimized()
-                        }
-                    }
-
-                    Keys.onReturnPressed: { if (typeof rootWindow !== "undefined" && rootWindow) rootWindow.showMinimized() }
-                    Keys.onLeftPressed: backBtn.forceActiveFocus()
-                    Keys.onDownPressed: playPauseBtn.forceActiveFocus()
-                }
-            }
+        }
         }
     }
 

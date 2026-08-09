@@ -792,7 +792,7 @@ Item {
                                 onClicked: {
                                     moviesList.currentIndex = index
                                     movieCard.forceActiveFocus()
-                                    homeView.detailsRequested(modelData)
+                                    homeView.playRequested(modelData)
                                 }
                             }
 
@@ -974,7 +974,7 @@ Item {
                                 onClicked: {
                                     musicList.currentIndex = index
                                     musicCard.forceActiveFocus()
-                                    homeView.detailsRequested(modelData)
+                                    homeView.playRequested(modelData)
                                 }
                             }
 

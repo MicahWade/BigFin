@@ -859,6 +859,79 @@ func TestDedicatedMusicPlayerUI(t *testing.T) {
 	}
 }
 
+// TestPlayerOverlayControlsAndTopRightButtonsRemoval verifies that clicking play goes to control screen while loading,
+// and that audio selector and top-right minimize/windowed buttons are removed from player overlays.
+func TestPlayerOverlayControlsAndTopRightButtonsRemoval(t *testing.T) {
+	playerPath := filepath.Join("..", "..", "ui", "qml", "PlayerOverlay.qml")
+	playerBytes, err := os.ReadFile(playerPath)
+	if err != nil {
+		t.Fatalf("Failed to read PlayerOverlay.qml: %v", err)
+	}
+	playerContent := string(playerBytes)
+
+	// 1. Verify controls stay visible while loading/buffering
+	if !strings.Contains(playerContent, "onIsBufferingChanged:") {
+		t.Errorf("PlayerOverlay.qml missing onIsBufferingChanged handler to keep controls visible while loading!")
+	}
+	if !strings.Contains(playerContent, "running: !playerOverlay.isBuffering") {
+		t.Errorf("PlayerOverlay.qml autoHideTimer should pause while player is loading/buffering!")
+	}
+
+	// 2. Verify audio selector (audioBtn) is removed
+	if strings.Contains(playerContent, "id: audioBtn") {
+		t.Errorf("PlayerOverlay.qml should not contain audio selector button (id: audioBtn)!")
+	}
+
+	// 3. Verify top right minimize & windowed/fullscreen buttons are removed
+	if strings.Contains(playerContent, "id: windowMinimizeBtn") {
+		t.Errorf("PlayerOverlay.qml should not contain minimize button (id: windowMinimizeBtn)!")
+	}
+	if strings.Contains(playerContent, "id: windowToggleFSBtn") {
+		t.Errorf("PlayerOverlay.qml should not contain windowed/fullscreen button (id: windowToggleFSBtn)!")
+	}
+
+	// 4. Verify MusicPlayerOverlay.qml also has minimize button removed
+	musicPlayerPath := filepath.Join("..", "..", "ui", "qml", "MusicPlayerOverlay.qml")
+	musicPlayerBytes, err := os.ReadFile(musicPlayerPath)
+	if err != nil {
+		t.Fatalf("Failed to read MusicPlayerOverlay.qml: %v", err)
+	}
+	musicPlayerContent := string(musicPlayerBytes)
+
+	if strings.Contains(musicPlayerContent, "id: windowMinimizeBtn") {
+		t.Errorf("MusicPlayerOverlay.qml should not contain minimize button (id: windowMinimizeBtn)!")
+	}
+}
+
+// TestRecentlyAddedMoviesClickTriggersPlay verifies that clicking a card in Recently Added in Movies
+// triggers playRequested(modelData) directly, matching play button behavior.
+func TestRecentlyAddedMoviesClickTriggersPlay(t *testing.T) {
+	homePath := filepath.Join("..", "..", "ui", "qml", "HomeView.qml")
+	homeBytes, err := os.ReadFile(homePath)
+	if err != nil {
+		t.Fatalf("Failed to read HomeView.qml: %v", err)
+	}
+	homeContent := string(homeBytes)
+
+	// Verify moviesList section calls playRequested on mouse click
+	moviesSectionIdx := strings.Index(homeContent, "id: moviesList")
+	if moviesSectionIdx == -1 {
+		t.Fatalf("HomeView.qml missing moviesList section!")
+	}
+
+	moviesSection := homeContent[moviesSectionIdx:]
+	endMoviesSectionIdx := strings.Index(moviesSection, "id: musicList")
+	if endMoviesSectionIdx != -1 {
+		moviesSection = moviesSection[:endMoviesSectionIdx]
+	}
+
+	if !strings.Contains(moviesSection, "homeView.playRequested(modelData)") {
+		t.Errorf("Recently Added Movies card click in HomeView.qml should invoke homeView.playRequested(modelData)!")
+	}
+}
+
+
+
 
 
 
