@@ -734,6 +734,34 @@ func TestMusicTabPreservationOnBackNavigation(t *testing.T) {
 	}
 }
 
+// TestMusicTabOrder verifies that GridView.qml orders music sub-tabs as Songs, Playlists, Artists.
+func TestMusicTabOrder(t *testing.T) {
+	gridPath := filepath.Join("..", "..", "ui", "qml", "GridView.qml")
+	gridBytes, err := os.ReadFile(gridPath)
+	if err != nil {
+		t.Fatalf("Failed to read GridView.qml: %v", err)
+	}
+	gridContent := string(gridBytes)
+
+	expectedOpts := `var opts = ["songs", "playlists", "artists"]`
+	if !strings.Contains(gridContent, expectedOpts) {
+		t.Errorf("GridView.qml getMusicSubTabIndex does not contain expected tab options array order [%s]", expectedOpts)
+	}
+
+	songsIdx := strings.Index(gridContent, `{ id: "songs", name: "Songs" }`)
+	playlistsIdx := strings.Index(gridContent, `{ id: "playlists", name: "Playlists" }`)
+	artistsIdx := strings.Index(gridContent, `{ id: "artists", name: "Artists" }`)
+
+	if songsIdx == -1 || playlistsIdx == -1 || artistsIdx == -1 {
+		t.Fatalf("GridView.qml is missing one or more music tab definitions!")
+	}
+
+	if !(songsIdx < playlistsIdx && playlistsIdx < artistsIdx) {
+		t.Errorf("Music tab order in GridView.qml is incorrect! Expected Songs < Playlists < Artists")
+	}
+}
+
+
 
 
 

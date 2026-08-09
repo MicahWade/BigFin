@@ -64,7 +64,7 @@ Item {
     }
 
     function getMusicSubTabIndex(filter) {
-        var opts = ["artists", "playlists", "songs"]
+        var opts = ["songs", "playlists", "artists"]
         var idx = opts.indexOf(filter)
         return idx >= 0 ? idx : 0
     }
@@ -156,9 +156,9 @@ Item {
             Repeater {
                 id: musicSubTabBarRepeater
                 model: [
-                    { id: "artists", name: "Artists" },
+                    { id: "songs", name: "Songs" },
                     { id: "playlists", name: "Playlists" },
-                    { id: "songs", name: "Songs" }
+                    { id: "artists", name: "Artists" }
                 ]
 
                 delegate: Rectangle {
