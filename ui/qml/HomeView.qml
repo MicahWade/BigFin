@@ -1130,25 +1130,6 @@ Item {
                                         smooth: true
                                         asynchronous: true
                                     }
-
-                                    Rectangle {
-                                        anchors.top: parent.top
-                                        anchors.right: parent.right
-                                        anchors.margins: 6
-                                        height: 20
-                                        width: 50
-                                        radius: 4
-                                        color: "#d00f172a"
-                                        visible: AppData.isRatingVisible(modelData)
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "★ " + (modelData.rating || "8.5")
-                                            font.pixelSize: 10
-                                            font.bold: true
-                                            color: "#fbbf24"
-                                        }
-                                    }
                                 }
 
                                 Text {
