@@ -37,6 +37,27 @@ Item {
     readonly property var ratingsCategoryOptions: ["Movies & Shows", "Movies Only", "Shows Only", "All Media Types"]
     property string activeMusicSubFilter: "songs"
 
+    // Centralized Dedicated Music Player Engine & Queue State
+    property var currentMusicTrack: null
+    property var musicQueue: []
+    property int musicQueueIndex: 0
+    property bool isMusicPlaying: false
+    property real musicPosition: 0.0
+    property real musicDuration: 180.0
+    property bool musicShuffle: false
+    property int musicRepeatMode: 0 // 0: Off, 1: Repeat All, 2: Repeat One
+    property bool isMusicPlayerActive: false
+    property bool isMusicMiniPlayerVisible: currentMusicTrack !== null && !isMusicPlayerActive
+
+    signal musicTrackChanged(var track)
+
+    function isMusicMedia(item) {
+        if (!item) return false
+        var mType = (item.mediaType || item.Type || (item.rawData ? item.rawData.Type : "")).toLowerCase()
+        var pType = (item.playlistType || item.PlaylistMediaType || "").toLowerCase()
+        return mType === "audio" || mType === "musictrack" || mType === "musicalbum" || mType === "musicartist" || mType === "song" || pType === "audio" || !!item.artist || !!item.album
+    }
+
     function updateMusicSubFilterForMediaItem(item) {
         if (!item) return
         var mType = (item.mediaType || item.Type || "").toLowerCase()
@@ -49,6 +70,109 @@ Item {
         } else if (mType === "audio" || mType === "musictrack" || mType === "song") {
             activeMusicSubFilter = "songs"
         }
+    }
+
+    function playMusicItem(item, queueList) {
+        if (!item) return
+        updateMusicSubFilterForMediaItem(item)
+
+        var queue = []
+        if (queueList && queueList.length > 0) {
+            queue = queueList
+        } else if (item.songs && item.songs.length > 0) {
+            queue = item.songs
+        } else if (item.tracks && item.tracks.length > 0) {
+            queue = item.tracks
+        } else {
+            for (var a = 0; a < artistsList.length; a++) {
+                if (artistsList[a].songs) {
+                    for (var s = 0; s < artistsList[a].songs.length; s++) {
+                        queue.push(artistsList[a].songs[s])
+                    }
+                }
+            }
+            if (queue.length === 0) queue = [item]
+        }
+
+        var foundIdx = -1
+        for (var i = 0; i < queue.length; i++) {
+            if (queue[i].id === item.id || queue[i].title === item.title) {
+                foundIdx = i
+                break
+            }
+        }
+
+        if (foundIdx === -1) {
+            if (item.songs && item.songs.length > 0) {
+                foundIdx = 0
+                item = item.songs[0]
+            } else {
+                queue.unshift(item)
+                foundIdx = 0
+            }
+        }
+
+        musicQueue = queue
+        musicQueueIndex = foundIdx
+        currentMusicTrack = queue[foundIdx] ? queue[foundIdx] : item
+        isMusicPlaying = true
+        musicPosition = 0.0
+        musicTrackChanged(currentMusicTrack)
+        console.log("[MUSIC ENGINE] Playing track: " + currentMusicTrack.title + " (Index: " + musicQueueIndex + " of " + musicQueue.length + ")")
+    }
+
+    function nextMusicTrack() {
+        if (!musicQueue || musicQueue.length === 0) return
+        if (musicRepeatMode === 2) {
+            musicPosition = 0.0
+            isMusicPlaying = true
+            return
+        }
+
+        var nextIdx = musicQueueIndex + 1
+        if (musicShuffle) {
+            nextIdx = Math.floor(Math.random() * musicQueue.length)
+        } else if (nextIdx >= musicQueue.length) {
+            if (musicRepeatMode === 1) {
+                nextIdx = 0
+            } else {
+                isMusicPlaying = false
+                return
+            }
+        }
+
+        musicQueueIndex = nextIdx
+        currentMusicTrack = musicQueue[nextIdx]
+        musicPosition = 0.0
+        isMusicPlaying = true
+        musicTrackChanged(currentMusicTrack)
+        console.log("[MUSIC ENGINE] Next track: " + currentMusicTrack.title)
+    }
+
+    function prevMusicTrack() {
+        if (!musicQueue || musicQueue.length === 0) return
+        var prevIdx = musicQueueIndex - 1
+        if (prevIdx < 0) {
+            prevIdx = musicQueue.length - 1
+        }
+        musicQueueIndex = prevIdx
+        currentMusicTrack = musicQueue[prevIdx]
+        musicPosition = 0.0
+        isMusicPlaying = true
+        musicTrackChanged(currentMusicTrack)
+        console.log("[MUSIC ENGINE] Previous track: " + currentMusicTrack.title)
+    }
+
+    function toggleMusicPlayPause() {
+        isMusicPlaying = !isMusicPlaying
+    }
+
+    function toggleMusicShuffle() {
+        musicShuffle = !musicShuffle
+    }
+
+    function cycleMusicRepeatMode() {
+        musicRepeatMode = (musicRepeatMode + 1) % 3
     }
 
     function isRatingVisible(item) {

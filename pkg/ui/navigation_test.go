@@ -761,6 +761,105 @@ func TestMusicTabOrder(t *testing.T) {
 	}
 }
 
+// TestDedicatedMusicPlayerUI verifies that music playback has a dedicated UI (MusicPlayerOverlay.qml),
+// a persistent bottom mini-player (MusicMiniPlayer.qml), centralized audio engine queue management in AppData.qml,
+// and dynamic player routing in Main.qml distinct from movies and TV shows.
+func TestDedicatedMusicPlayerUI(t *testing.T) {
+	// 1. Verify MusicPlayerOverlay.qml exists and contains music UI elements
+	musicPlayerPath := filepath.Join("..", "..", "ui", "qml", "MusicPlayerOverlay.qml")
+	musicBytes, err := os.ReadFile(musicPlayerPath)
+	if err != nil {
+		t.Fatalf("Failed to read MusicPlayerOverlay.qml: %v", err)
+	}
+	musicContent := string(musicBytes)
+
+	requiredMusicElements := []string{
+		"NOW PLAYING",
+		"NOW PLAYING QUEUE",
+		"AppData.nextMusicTrack()",
+		"AppData.prevMusicTrack()",
+		"AppData.toggleMusicShuffle()",
+		"AppData.cycleMusicRepeatMode()",
+		"queueListView",
+		"formatTime",
+		"seekTrack",
+	}
+
+	for _, elem := range requiredMusicElements {
+		if !strings.Contains(musicContent, elem) {
+			t.Errorf("MusicPlayerOverlay.qml missing required music UI element or function call: %s", elem)
+		}
+	}
+
+	// 2. Verify MusicMiniPlayer.qml exists and contains mini-player controls
+	miniPlayerPath := filepath.Join("..", "..", "ui", "qml", "components", "MusicMiniPlayer.qml")
+	miniBytes, err := os.ReadFile(miniPlayerPath)
+	if err != nil {
+		t.Fatalf("Failed to read MusicMiniPlayer.qml: %v", err)
+	}
+	miniContent := string(miniBytes)
+
+	requiredMiniElements := []string{
+		"expandRequested",
+		"AppData.toggleMusicPlayPause()",
+		"AppData.nextMusicTrack()",
+		"activeTrack",
+	}
+
+	for _, elem := range requiredMiniElements {
+		if !strings.Contains(miniContent, elem) {
+			t.Errorf("MusicMiniPlayer.qml missing required mini-player property/signal: %s", elem)
+		}
+	}
+
+	// 3. Verify AppData.qml contains centralized music queue state and playback functions
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	appDataContent := string(appDataBytes)
+
+	requiredAppDataProps := []string{
+		"property var currentMusicTrack",
+		"property var musicQueue",
+		"property bool isMusicPlaying",
+		"property bool musicShuffle",
+		"property int musicRepeatMode",
+		"function playMusicItem",
+		"function nextMusicTrack",
+		"function prevMusicTrack",
+		"function toggleMusicPlayPause",
+	}
+
+	for _, prop := range requiredAppDataProps {
+		if !strings.Contains(appDataContent, prop) {
+			t.Errorf("AppData.qml missing required music engine property/method: %s", prop)
+		}
+	}
+
+	// 4. Verify Main.qml routes music items to MusicPlayerOverlay and mounts MusicMiniPlayer
+	mainPath := filepath.Join("..", "..", "ui", "qml", "Main.qml")
+	mainBytes, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Fatalf("Failed to read Main.qml: %v", err)
+	}
+	mainContent := string(mainBytes)
+
+	if !strings.Contains(mainContent, "MusicPlayerOverlay.qml") {
+		t.Errorf("Main.qml missing dynamic player loading for MusicPlayerOverlay.qml!")
+	}
+
+	if !strings.Contains(mainContent, "components/MusicMiniPlayer.qml") {
+		t.Errorf("Main.qml missing MusicMiniPlayer.qml component loader!")
+	}
+
+	if !strings.Contains(mainContent, "isMusicItem") {
+		t.Errorf("Main.qml missing isMusicItem check for media player routing!")
+	}
+}
+
+
 
 
 

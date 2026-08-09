@@ -271,15 +271,41 @@ Item {
                     }
                 }
             }
+
+            // Dedicated Music Mini-Player (Persistent Bottom Bar while browsing views)
+            Loader {
+                id: miniPlayerLoader
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 16
+                height: 68
+                active: AppData.isMusicMiniPlayerVisible
+                source: "components/MusicMiniPlayer.qml"
+                z: 80
+
+                onLoaded: {
+                    if (item) {
+                        item.expandRequested.connect(function() {
+                            navigateTo("player", AppData.currentMusicTrack)
+                        })
+                    }
+                }
+            }
         }
     }
 
-    // Fullscreen Player Overlay Container
+    function isMusicItem(item) {
+        if (!item) return false
+        return AppData.isMusicMedia(item)
+    }
+
+    // Fullscreen Overlay Container (Dynamic Music vs Video Player)
     Loader {
         id: playerLoader
         anchors.fill: parent
         active: mainShell.currentView === "player"
-        source: "PlayerOverlay.qml"
+        source: mainShell.isMusicItem(mainShell.selectedMediaItem) ? "MusicPlayerOverlay.qml" : "PlayerOverlay.qml"
         z: 100
 
         onLoaded: {
@@ -414,7 +440,11 @@ Item {
         function onPlayRequested(item) {
             console.log("[MAIN] Play requested for: " + (item ? item.title : "unknown"))
             mainShell.selectedMediaItem = item
-            AppData.updateMusicSubFilterForMediaItem(item)
+            if (mainShell.isMusicItem(item)) {
+                AppData.playMusicItem(item)
+            } else {
+                AppData.updateMusicSubFilterForMediaItem(item)
+            }
             navigateTo("player", item)
         }
 
