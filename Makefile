@@ -1,6 +1,6 @@
 # Bigfin - Native Jellyfin Media Client Makefile
 
-GO ?= $(shell command -v go 2>/dev/null || echo /tmp/go_bin/go/bin/go)
+GO ?= $(shell if command -v go >/dev/null 2>&1; then command -v go; elif [ -f $$HOME/.local/go/bin/go ]; then echo $$HOME/.local/go/bin/go; else echo /tmp/go_bin/go/bin/go; fi)
 
 .PHONY: all build test run clean help
 

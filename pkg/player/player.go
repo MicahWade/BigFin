@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -248,15 +249,62 @@ func (p *Player) LoadFile(url string) error {
 	}
 }
 
+// GetSystemTotalRAMMB detects total system physical RAM in Megabytes from /proc/meminfo. Defaults to 4096MB if unavailable.
+func GetSystemTotalRAMMB() int {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 4096
+	}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MemTotal:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				if kb, err := strconv.Atoi(fields[1]); err == nil {
+					return kb / 1024
+				}
+			}
+		}
+	}
+	return 4096
+}
+
+// CalculateOptimalDemuxerMaxBytes calculates the optimal RAM stream buffer size based on total system RAM.
+func CalculateOptimalDemuxerMaxBytes() string {
+	ramMB := GetSystemTotalRAMMB()
+	switch {
+	case ramMB <= 2048:
+		return "50M"  // Low memory systems (<= 2GB) -> 50MB RAM buffer limit
+	case ramMB <= 4096:
+		return "150M" // Medium memory systems (<= 4GB) -> 150MB RAM buffer limit
+	case ramMB <= 8192:
+		return "300M" // Standard systems (<= 8GB) -> 300MB RAM buffer limit
+	default:
+		return "500M" // High performance systems (> 8GB) -> 500MB RAM buffer limit
+	}
+}
+
 func (p *Player) startMPV(url string) error {
 	_ = os.Remove(p.IPCPath)
 	mpvPath, _ := exec.LookPath("mpv")
+
+	cacheDir := filepath.Join(os.TempDir(), "bigfin-cache")
+	_ = os.MkdirAll(cacheDir, 0755)
+
+	maxBytes := CalculateOptimalDemuxerMaxBytes()
+	log.Printf("[PLAYER] System RAM: %d MB -> Dynamic mpv RAM buffer set to: %s (spilling to disk if needed)", GetSystemTotalRAMMB(), maxBytes)
 
 	p.cmd = exec.Command(mpvPath,
 		"--hwdec=auto-safe",
 		"--vo=gpu",
 		"--keepaspect=yes",
 		"--force-window=immediate",
+		"--hr-seek=yes",
+		"--cache=yes",
+		"--cache-on-disk=yes",
+		fmt.Sprintf("--cache-dir=%s", cacheDir),
+		"--demuxer-readahead-secs=120", // Pre-fetch 2 minutes (120 seconds) ahead
+		fmt.Sprintf("--demuxer-max-bytes=%s", maxBytes), // Dynamic RAM buffer scaling
 		fmt.Sprintf("--input-ipc-server=%s", p.IPCPath),
 		url,
 	)

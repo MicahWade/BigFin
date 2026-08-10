@@ -519,7 +519,7 @@ Rectangle {
         var xhr = new XMLHttpRequest()
         xhr.open("POST", formattedUrl + "/Users/AuthenticateByName")
         xhr.setRequestHeader("Content-Type", "application/json")
-        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="Plasma Bigscreen", DeviceId="bigfin-01", Version="1.0.0"')
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="Plasma Bigscreen TV", DeviceId="bigfin-plasma-tv-01", Version="1.0.0"')
         xhr.timeout = 8000
 
         var payload = JSON.stringify({

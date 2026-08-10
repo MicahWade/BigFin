@@ -221,3 +221,18 @@ func TestJellyfinStreamPlayback(t *testing.T) {
 		t.Errorf("Live Jellyfin stream verification failed. Health: %+v", health)
 	}
 }
+
+func TestDynamicRAMBufferAllocation(t *testing.T) {
+	ramMB := GetSystemTotalRAMMB()
+	if ramMB <= 0 {
+		t.Errorf("Expected positive RAM MB, got %d", ramMB)
+	}
+
+	maxBytes := CalculateOptimalDemuxerMaxBytes()
+	if maxBytes == "" {
+		t.Errorf("Expected non-empty maxBytes string")
+	}
+
+	t.Logf("Detected System RAM: %d MB -> Calculated demuxer buffer limit: %s", ramMB, maxBytes)
+}
+

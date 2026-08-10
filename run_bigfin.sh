@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Extend PATH so desktop environment launcher can locate Go toolchain & binaries
-export PATH="$PATH:/usr/lib64/qt6/bin:/home/linuxbrew/.linuxbrew/bin:/tmp/go_bin/go/bin:/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin"
+export PATH="$PATH:/usr/lib64/qt6/bin:/home/linuxbrew/.linuxbrew/bin:/tmp/go_bin/go/bin:/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin:$HOME/.local/go/bin"
 
 LOG_FILE="/tmp/bigfin_launch.log"
 
@@ -81,6 +81,8 @@ if [ "$NEED_REBUILD" -eq 1 ]; then
         go build -o "$SCRIPT_DIR/bin/bigfin_app" ./cmd/bigfin || true
     elif [ -f "/tmp/go_bin/go/bin/go" ]; then
         /tmp/go_bin/go/bin/go build -o "$SCRIPT_DIR/bin/bigfin_app" ./cmd/bigfin || true
+    elif [ -f "$HOME/.local/go/bin/go" ]; then
+        "$HOME/.local/go/bin/go" build -o "$SCRIPT_DIR/bin/bigfin_app" ./cmd/bigfin || true
     fi
 fi
 

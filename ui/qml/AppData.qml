@@ -225,6 +225,22 @@ Item {
         onTriggered: appData.clearExpiredCache()
     }
 
+    Timer {
+        id: sessionKeepAliveTimer
+        interval: 600000 // Ping Jellyfin server every 10 minutes to prevent session expiration
+        running: isAuthenticated && liveServerUrl !== "" && accessToken !== ""
+        repeat: true
+        onTriggered: {
+            if (liveServerUrl && userId && accessToken) {
+                console.log("[SESSION KEEP-ALIVE] Sending periodic session ping to " + liveServerUrl)
+                var xhr = new XMLHttpRequest()
+                xhr.open("GET", liveServerUrl + "/Users/" + userId)
+                xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="Plasma Bigscreen TV", DeviceId="bigfin-plasma-tv-01", Version="1.0.0", Token="' + accessToken + '"')
+                xhr.send()
+            }
+        }
+    }
+
     function getCachedData(key) {
         if (!dataCache || !dataCache[key]) return null
         var entry = dataCache[key]
@@ -774,18 +790,47 @@ Item {
                     liveServerUrl = currentUrl
                     console.log("[JELLYFIN API SUCCESS] Server verified at " + currentUrl)
                     isConnectedToLiveServer = true
-                    isAuthenticated = true
-                    connectionError = ""
-                    connectionStatusChanged()
 
-                    fetchMovies()
-                    fetchTVShows()
-                    fetchMusic()
-                    fetchPlaylists()
-                    fetchFavorites()
-                    fetchContinueWatching()
-                    fetchNextUpList()
-                    fetchRecentlyAdded()
+                    if (uId && token) {
+                        console.log("[JELLYFIN API] Verifying session token for user " + uId)
+                        var authXhr = new XMLHttpRequest()
+                        var authUrl = currentUrl + "/Users/" + uId
+                        authXhr.open("GET", authUrl)
+                        authXhr.timeout = 4000
+                        authXhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + token + '"')
+                        authXhr.onreadystatechange = function() {
+                            if (authXhr.readyState === XMLHttpRequest.DONE) {
+                                if (authXhr.status === 200) {
+                                    console.log("[JELLYFIN API SUCCESS] Token verified successfully for " + authenticatedUser)
+                                    isAuthenticated = true
+                                    connectionError = ""
+                                    connectionStatusChanged()
+
+                                    fetchMovies()
+                                    fetchTVShows()
+                                    fetchMusic()
+                                    fetchPlaylists()
+                                    fetchFavorites()
+                                    fetchContinueWatching()
+                                    fetchNextUpList()
+                                    fetchRecentlyAdded()
+                                } else if (authXhr.status === 401 || authXhr.status === 403) {
+                                    console.log("[JELLYFIN API EXPIRED] Session token for " + authenticatedUser + " is invalid or expired (HTTP " + authXhr.status + "). Prompting login.")
+                                    isAuthenticated = false
+                                    setConnectionFailed("Session expired for " + (authenticatedUser || "user") + ". Please sign in again.")
+                                } else {
+                                    console.log("[JELLYFIN API WARN] Session verification returned status " + authXhr.status)
+                                    tryVerifyNextIp(candidates, index + 1, uId, token)
+                                }
+                            }
+                        }
+                        authXhr.ontimeout = function() { tryVerifyNextIp(candidates, index + 1, uId, token) }
+                        authXhr.onerror = function() { tryVerifyNextIp(candidates, index + 1, uId, token) }
+                        authXhr.send()
+                    } else {
+                        isAuthenticated = false
+                        connectionStatusChanged()
+                    }
                 } else {
                     console.log("[JELLYFIN API WARN] IP candidate " + currentUrl + " returned status " + verifyXhr.status)
                     tryVerifyNextIp(candidates, index + 1, uId, token)
@@ -1251,23 +1296,29 @@ Item {
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    var res = JSON.parse(xhr.responseText)
-                    var parsed = parseJellyfinItems(res.Items || [])
-                    moviesList = parsed
-                    setCachedData("movies", parsed, 300000)
-                    console.log("[JELLYFIN API] Loaded " + parsed.length + " MOVIES")
-                    
-                    if (parsed.length > 0) {
-                        if (!featuredHero) {
-                            featuredHero = parsed[0]
-                            featuredHero.quality = "4K Direct Stream"
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var parsed = parseJellyfinItems(res.Items || [])
+                        moviesList = parsed
+                        setCachedData("movies", parsed, 300000)
+                        console.log("[JELLYFIN API] Loaded " + parsed.length + " MOVIES")
+                        
+                        if (parsed.length > 0) {
+                            if (!featuredHero) {
+                                featuredHero = parsed[0]
+                                featuredHero.quality = "4K Direct Stream"
+                            }
                         }
+                        updateMasterGrid()
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] Movies parse fail: " + e)
                     }
-                    updateMasterGrid()
-                } catch (e) {
-                    console.log("[JELLYFIN API ERROR] Movies parse fail: " + e)
+                } else if (xhr.status === 401 || xhr.status === 403) {
+                    console.log("[JELLYFIN API EXPIRED] Movies fetch returned HTTP " + xhr.status + ". Prompting re-authentication.")
+                    isAuthenticated = false
+                    setConnectionFailed("Session expired. Please sign in again.")
                 }
             }
         }
@@ -1288,16 +1339,22 @@ Item {
         xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="TV", DeviceId="bigfin-01", Version="1.0.0", Token="' + accessToken + '"')
 
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    var res = JSON.parse(xhr.responseText)
-                    var parsed = parseJellyfinItems(res.Items || [])
-                    tvShowsList = parsed
-                    setCachedData("tvshows", parsed, 300000)
-                    console.log("[JELLYFIN API] Loaded " + parsed.length + " TV SHOWS")
-                    updateMasterGrid()
-                } catch (e) {
-                    console.log("[JELLYFIN API ERROR] TV Shows parse fail: " + e)
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        var parsed = parseJellyfinItems(res.Items || [])
+                        tvShowsList = parsed
+                        setCachedData("tvshows", parsed, 300000)
+                        console.log("[JELLYFIN API] Loaded " + parsed.length + " TV SHOWS")
+                        updateMasterGrid()
+                    } catch (e) {
+                        console.log("[JELLYFIN API ERROR] TV Shows parse fail: " + e)
+                    }
+                } else if (xhr.status === 401 || xhr.status === 403) {
+                    console.log("[JELLYFIN API EXPIRED] TV Shows fetch returned HTTP " + xhr.status + ". Prompting re-authentication.")
+                    isAuthenticated = false
+                    setConnectionFailed("Session expired. Please sign in again.")
                 }
             }
         }
