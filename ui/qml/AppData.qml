@@ -651,7 +651,48 @@ Item {
         setConnectionFailed("Welcome to Bigfin! Please set your Jellyfin server IP address to connect.")
     }
 
-    function saveNewSession(sUrl, sName, sVersion, uId, uName, token, rawIps) {
+    function getActiveSessionObj() {
+        if (!savedSessions || savedSessions.length === 0) return null
+        for (var i = 0; i < savedSessions.length; i++) {
+            if (savedSessions[i].id === activeSessionId || activeSessionId === "" || savedSessions.length === 1) {
+                return savedSessions[i]
+            }
+        }
+        return savedSessions[0]
+    }
+
+    function silentReauthenticate(sUrl, uName, pwd, callback) {
+        if (!sUrl || !uName || !pwd) {
+            if (callback) callback(false, "", "")
+            return
+        }
+        console.log("[JELLYFIN AUTO-REAUTH] Re-authenticating user '" + uName + "' at " + sUrl + "...")
+        var xhr = new XMLHttpRequest()
+        xhr.open("POST", sUrl + "/Users/AuthenticateByName")
+        xhr.setRequestHeader("Content-Type", "application/json")
+        xhr.setRequestHeader("X-Emby-Authorization", 'MediaBrowser Client="Bigfin", Device="Plasma Bigscreen TV", DeviceId="bigfin-plasma-tv-01", Version="1.0.0"')
+        xhr.timeout = 8000
+        var payload = JSON.stringify({ Username: uName, Pw: pwd })
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        if (res.AccessToken && res.User && res.User.Id) {
+                            if (callback) callback(true, res.AccessToken, res.User.Id)
+                            return
+                        }
+                    } catch(e) {}
+                }
+                if (callback) callback(false, "", "")
+            }
+        }
+        xhr.ontimeout = function() { if (callback) callback(false, "", "") }
+        xhr.onerror = function() { if (callback) callback(false, "", "") }
+        xhr.send(payload)
+    }
+
+    function saveNewSession(sUrl, sName, sVersion, uId, uName, token, rawIps, pwd) {
         liveServerUrl = sUrl
         serverName = sName
         serverVersion = sVersion
@@ -660,9 +701,10 @@ Item {
         accessToken = token
 
         var targetIps = (rawIps && rawIps.trim() !== "") ? rawIps : sUrl
+        var passwordVal = pwd || ""
 
         if (typeof SessionBridge !== "undefined") {
-            SessionBridge.saveSession(targetIps, sName, sVersion, uId, uName, token)
+            SessionBridge.saveSession(targetIps, sName, sVersion, uId, uName, token, passwordVal)
             try {
                 var jsonStr = SessionBridge.loadSessionsJson()
                 var loadedData = JSON.parse(jsonStr)
@@ -679,7 +721,8 @@ Item {
                 serverVersion: sVersion,
                 userId: uId,
                 username: uName,
-                accessToken: token
+                accessToken: token,
+                password: passwordVal
             }
             var updated = []
             for (var i = 0; i < savedSessions.length; i++) {
@@ -815,7 +858,20 @@ Item {
                                     fetchNextUpList()
                                     fetchRecentlyAdded()
                                 } else if (authXhr.status === 401 || authXhr.status === 403) {
-                                    console.log("[JELLYFIN API EXPIRED] Session token for " + authenticatedUser + " is invalid or expired (HTTP " + authXhr.status + "). Prompting login.")
+                                    console.log("[JELLYFIN API EXPIRED] Session token for " + authenticatedUser + " is expired (HTTP " + authXhr.status + "). Attempting silent token renewal...")
+                                    var currentSess = getActiveSessionObj()
+                                    if (currentSess && currentSess.username && currentSess.password) {
+                                        silentReauthenticate(currentUrl, currentSess.username, currentSess.password, function(success, newToken, newUserId) {
+                                            if (success) {
+                                                console.log("[JELLYFIN AUTO-REAUTH SUCCESS] Obtained fresh session token for " + currentSess.username)
+                                                saveNewSession(currentUrl, serverName, serverVersion, newUserId, currentSess.username, newToken, currentUrl, currentSess.password)
+                                                return
+                                            }
+                                            isAuthenticated = false
+                                            setConnectionFailed("Session expired for " + (authenticatedUser || "user") + ". Please sign in again.")
+                                        })
+                                        return
+                                    }
                                     isAuthenticated = false
                                     setConnectionFailed("Session expired for " + (authenticatedUser || "user") + ". Please sign in again.")
                                 } else {

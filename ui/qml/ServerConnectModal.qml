@@ -546,7 +546,7 @@ Rectangle {
                         console.log("[JELLYFIN AUTH SUCCESS] Granted AccessToken for User: " + uName + " (ID: " + uId + ")")
                         statusMessage = "Authentication Successful! Loading live media items..."
 
-                        AppData.saveNewSession(formattedUrl, discoveredServerName, discoveredVersion, uId, uName, token, rawInputIp)
+                        AppData.saveNewSession(formattedUrl, discoveredServerName, discoveredVersion, uId, uName, token, rawInputIp, inputPassword)
                         serverConnected(formattedUrl, discoveredServerName, uName, token)
                     } catch (e) {
                         console.log("[JELLYFIN AUTH ERROR] Failed to parse auth response: " + e)

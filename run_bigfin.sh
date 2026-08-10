@@ -164,8 +164,8 @@ class SessionBridge(QObject):
             print('[SESSION] Load error:', e)
         return '{\"activeSessionId\":\"\",\"sessions\":[]}'
 
-    @pyqtSlot(str, str, str, str, str, str)
-    def saveSession(self, serverUrl, serverName, serverVersion, userId, username, accessToken):
+    @pyqtSlot(str, str, str, str, str, str, str)
+    def saveSession(self, serverUrl, serverName, serverVersion, userId, username, accessToken, password=''):
         try:
             os.makedirs(config_dir, exist_ok=True)
             data = {'activeSessionId': '', 'sessions': []}
@@ -186,6 +186,7 @@ class SessionBridge(QObject):
                 'userId': userId,
                 'username': username,
                 'accessToken': accessToken,
+                'password': password,
                 'lastUsed': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
             }
             updated.insert(0, new_sess)
