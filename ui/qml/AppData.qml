@@ -34,8 +34,19 @@ Item {
     property bool seasonNavGoesToStart: seasonNavModeIdx === 0 || seasonNavModeIdx === 2
     property bool showRatings: true
     property int ratingsCategoryIdx: 0 // 0: Movies & Shows, 1: Movies Only, 2: Shows Only, 3: All Media Types
-    readonly property var ratingsCategoryOptions: ["Movies & Shows", "Movies Only", "Shows Only", "All Media Types"]
     property string activeMusicSubFilter: "songs"
+    property int homeBitrateIdx: 2 // Default 40 Mbps
+    property int remoteBitrateIdx: 2 // Default Auto (Adaptive - 20 Mbps limit)
+
+    function getMaxStreamingBitrateBps() {
+        if (remoteBitrateIdx === 2) return 20000000; // Auto Adaptive: 20 Mbps limit for smooth streaming without stutter
+        if (remoteBitrateIdx === 1) return 10000000; // 10 Mbps
+        if (remoteBitrateIdx === 0) return 20000000; // 20 Mbps
+        if (homeBitrateIdx === 3) return 10000000; // 10 Mbps
+        if (homeBitrateIdx === 2) return 40000000; // 40 Mbps
+        if (homeBitrateIdx === 1) return 80000000; // 80 Mbps
+        return 120000000; // 120 Mbps
+    }
 
     // Centralized Dedicated Music Player Engine & Queue State
     property var currentMusicTrack: null

@@ -769,13 +769,36 @@ Item {
                     color: AppData.currentTheme.accent ? AppData.currentTheme.accent : "#00f0ff"
                 }
 
+                function handleScrub(mouseX) {
+                    if (seekTrack.width <= 0 || AppData.musicDuration <= 0) return
+                    var ratio = Math.max(0, Math.min(1.0, mouseX / seekTrack.width))
+                    AppData.musicPosition = ratio * AppData.musicDuration
+                }
+
                 MouseArea {
+                    id: musicSeekMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
+
+                    onPressed: function(mouse) {
+                        seekTrack.handleScrub(mouse.x)
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (pressed) {
+                            seekTrack.handleScrub(mouse.x)
+                        }
+                    }
+
+                    onReleased: function(mouse) {
+                        seekTrack.handleScrub(mouse.x)
+                        audioStreamPlayer.setPosition(AppData.musicPosition * 1000)
+                    }
+
                     onClicked: function(mouse) {
-                        var ratio = Math.max(0, Math.min(1.0, mouse.x / seekTrack.width))
-                        AppData.musicPosition = ratio * AppData.musicDuration
+                        seekTrack.handleScrub(mouse.x)
                         audioStreamPlayer.setPosition(AppData.musicPosition * 1000)
                     }
                 }

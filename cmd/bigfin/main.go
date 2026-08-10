@@ -97,7 +97,14 @@ func main() {
 		defer p.Destroy()
 	}
 
-	qmlPath, _ := filepath.Abs("ui/qml/main.qml")
+	execDir := "."
+	if exePath, err := os.Executable(); err == nil {
+		execDir = filepath.Dir(exePath)
+	}
+	qmlPath := filepath.Join(execDir, "../ui/qml/main.qml")
+	if _, err := os.Stat(qmlPath); os.IsNotExist(err) {
+		qmlPath, _ = filepath.Abs("ui/qml/main.qml")
+	}
 	log.Printf("[INFO] Loading Kirigami spatial UI entrypoint from: %s\n", qmlPath)
 	if _, err := os.Stat(qmlPath); os.IsNotExist(err) {
 		log.Fatalf("[ERROR] QML main template missing at path: %s\n", qmlPath)

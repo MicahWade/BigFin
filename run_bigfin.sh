@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Extend PATH so desktop environment launcher can locate Go toolchain & binaries
-export PATH="$PATH:/home/linuxbrew/.linuxbrew/bin:/tmp/go_bin/go/bin:/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin"
+export PATH="$PATH:/usr/lib64/qt6/bin:/home/linuxbrew/.linuxbrew/bin:/tmp/go_bin/go/bin:/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin"
 
 LOG_FILE="/tmp/bigfin_launch.log"
 

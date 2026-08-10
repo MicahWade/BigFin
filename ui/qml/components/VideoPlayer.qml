@@ -88,6 +88,7 @@ Item {
                     value: currentPosition
                     activeFocusOnTab: true
                     focus: true
+                    onMoved: currentPosition = value
 
                     background: Rectangle {
                         x: positionSlider.leftPadding

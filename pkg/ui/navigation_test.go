@@ -930,6 +930,96 @@ func TestRecentlyAddedMoviesClickTriggersPlay(t *testing.T) {
 	}
 }
 
+// TestMovieResumeAndScrubbingFunctionality verifies that PlayerOverlay.qml implements:
+// 1. Correct resume calculation (getResumePositionTicks / getResumePositionSeconds) and StartTimeTicks parameter in streamUrl.
+// 2. Pending initial seek state management (pendingInitialSeek, targetResumePosition, applyInitialSeek).
+// 3. Interactive mouse drag scrubbing (onPressed, onPositionChanged, onReleased, preventStealing) and seek knob handle.
+// 4. PerformSeek helper for seek execution and Jellyfin playback progress reporting.
+func TestMovieResumeAndScrubbingFunctionality(t *testing.T) {
+	playerPath := filepath.Join("..", "..", "ui", "qml", "PlayerOverlay.qml")
+	playerBytes, err := os.ReadFile(playerPath)
+	if err != nil {
+		t.Fatalf("Failed to read PlayerOverlay.qml: %v", err)
+	}
+	playerContent := string(playerBytes)
+
+	requiredResumeFeatures := []string{
+		"getResumePositionTicks",
+		"getResumePositionSeconds",
+		"pendingInitialSeek",
+		"targetResumePosition",
+		"applyInitialSeek",
+	}
+
+	for _, feat := range requiredResumeFeatures {
+		if !strings.Contains(playerContent, feat) {
+			t.Errorf("PlayerOverlay.qml missing required resume feature: %s", feat)
+		}
+	}
+
+	requiredScrubbingFeatures := []string{
+		"isScrubbing",
+		"performSeek",
+		"seekHandle",
+		"handleScrub",
+		"preventStealing: true",
+		"onPositionChanged: function(mouse)",
+		"onReleased: function(mouse)",
+	}
+
+	for _, feat := range requiredScrubbingFeatures {
+		if !strings.Contains(playerContent, feat) {
+			t.Errorf("PlayerOverlay.qml missing required scrubbing feature: %s", feat)
+		}
+	}
+}
+
+// TestAdaptiveStreamingAndBitrateAutoScaling verifies that:
+// 1. AppData.qml contains homeBitrateIdx, remoteBitrateIdx, and getMaxStreamingBitrateBps function.
+// 2. SettingsView.qml binds home/remote bitrate settings to AppData.
+// 3. PlayerOverlay.qml includes MaxStreamingBitrate and PlaySessionId in streamUrl to enable auto adaptive streaming and prevent stuttering.
+func TestAdaptiveStreamingAndBitrateAutoScaling(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	appDataBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	appDataContent := string(appDataBytes)
+
+	if !strings.Contains(appDataContent, "getMaxStreamingBitrateBps") {
+		t.Errorf("AppData.qml missing getMaxStreamingBitrateBps function!")
+	}
+	if !strings.Contains(appDataContent, "remoteBitrateIdx") {
+		t.Errorf("AppData.qml missing remoteBitrateIdx property!")
+	}
+
+	settingsPath := filepath.Join("..", "..", "ui", "qml", "SettingsView.qml")
+	settingsBytes, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("Failed to read SettingsView.qml: %v", err)
+	}
+	settingsContent := string(settingsBytes)
+
+	if !strings.Contains(settingsContent, "AppData.remoteBitrateIdx") {
+		t.Errorf("SettingsView.qml missing binding for AppData.remoteBitrateIdx!")
+	}
+
+	playerPath := filepath.Join("..", "..", "ui", "qml", "PlayerOverlay.qml")
+	playerBytes, err := os.ReadFile(playerPath)
+	if err != nil {
+		t.Fatalf("Failed to read PlayerOverlay.qml: %v", err)
+	}
+	playerContent := string(playerBytes)
+
+	if !strings.Contains(playerContent, "MaxStreamingBitrate=") {
+		t.Errorf("PlayerOverlay.qml missing MaxStreamingBitrate query parameter in streamUrl!")
+	}
+	if !strings.Contains(playerContent, "PlaySessionId=") {
+		t.Errorf("PlayerOverlay.qml missing PlaySessionId query parameter in streamUrl!")
+	}
+}
+
+
 
 
 

@@ -35,9 +35,9 @@ Item {
 
     // Category 2: Video Playback & Bitrate (6 items)
     property var homeBitrates: ["120 Mbps (4K HDR)", "80 Mbps (1080p)", "40 Mbps (1080p)", "10 Mbps (720p)"]
-    property int homeBitrateIdx: 0
+    property int homeBitrateIdx: AppData.homeBitrateIdx
     property var remoteBitrates: ["20 Mbps (1080p)", "10 Mbps (720p)", "Auto (Adaptive)"]
-    property int remoteBitrateIdx: 0
+    property int remoteBitrateIdx: AppData.remoteBitrateIdx
     property bool directPlayHevc: true
     property bool directPlayAv1: true
     property var maxTranscodeResolutions: ["Auto 4K", "1080p Max", "720p Max"]
@@ -726,8 +726,14 @@ Item {
             else AppData.ratingsCategoryIdx = (AppData.ratingsCategoryIdx + 1) % AppData.ratingsCategoryOptions.length
         }
         else if (catIdx === 2) {
-            if (itemIdx === 0) homeBitrateIdx = (homeBitrateIdx + 1) % homeBitrates.length
-            else if (itemIdx === 1) remoteBitrateIdx = (remoteBitrateIdx + 1) % remoteBitrates.length
+            if (itemIdx === 0) {
+                homeBitrateIdx = (homeBitrateIdx + 1) % homeBitrates.length
+                AppData.homeBitrateIdx = homeBitrateIdx
+            }
+            else if (itemIdx === 1) {
+                remoteBitrateIdx = (remoteBitrateIdx + 1) % remoteBitrates.length
+                AppData.remoteBitrateIdx = remoteBitrateIdx
+            }
             else if (itemIdx === 2) directPlayHevc = !directPlayHevc
             else if (itemIdx === 3) directPlayAv1 = !directPlayAv1
             else if (itemIdx === 4) maxTranscodeResIdx = (maxTranscodeResIdx + 1) % maxTranscodeResolutions.length

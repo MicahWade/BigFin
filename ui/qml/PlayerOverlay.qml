@@ -14,10 +14,44 @@ Item {
     property real totalDuration: 1440.0 // seconds (24 mins)
     property string activeAudioTrack: "English (AAC 5.1)"
     property string activeSubtitleTrack: "Off"
+    property bool isScrubbing: false
+    property bool pendingInitialSeek: false
+    property real targetResumePosition: 0.0
 
     signal closeRequested()
 
     property var activeMedia: item ? item : (typeof mainShell !== "undefined" && mainShell && mainShell.selectedMediaItem ? mainShell.selectedMediaItem : AppData.featuredHero)
+
+    function getResumePositionTicks(media) {
+        if (!media) return 0
+        if (media.rawData && media.rawData.UserData && media.rawData.UserData.PlaybackPositionTicks > 0) {
+            return media.rawData.UserData.PlaybackPositionTicks
+        }
+        if (media.rawData && media.rawData.PlaybackPositionTicks > 0) {
+            return media.rawData.PlaybackPositionTicks
+        }
+        if (media.PlaybackPositionTicks > 0) {
+            return media.PlaybackPositionTicks
+        }
+        if (media.playbackPositionTicks > 0) {
+            return media.playbackPositionTicks
+        }
+        if (media.resumePositionTicks > 0) {
+            return media.resumePositionTicks
+        }
+        if (media.startPositionTicks > 0) {
+            return media.startPositionTicks
+        }
+        if (media.progress > 0 && media.progress < 0.98 && media.rawData && media.rawData.RunTimeTicks > 0) {
+            return Math.floor(media.progress * media.rawData.RunTimeTicks)
+        }
+        return 0
+    }
+
+    function getResumePositionSeconds(media) {
+        var ticks = getResumePositionTicks(media)
+        return Math.floor(ticks / 10000000)
+    }
 
     property string streamUrl: {
         if (activeMedia && activeMedia.id && AppData.liveServerUrl && AppData.accessToken) {
@@ -27,7 +61,15 @@ Item {
                 return AppData.liveServerUrl + "/Audio/" + activeMedia.id + "/stream?static=true&api_key=" + AppData.accessToken
             }
             var msId = (activeMedia.rawData && activeMedia.rawData.MediaSources && activeMedia.rawData.MediaSources.length > 0) ? activeMedia.rawData.MediaSources[0].Id : activeMedia.id
-            return AppData.liveServerUrl + "/Videos/" + activeMedia.id + "/master.m3u8?MediaSourceId=" + msId + "&VideoCodec=h264&AudioCodec=aac,mp3&api_key=" + AppData.accessToken
+            var maxBitrate = AppData.getMaxStreamingBitrateBps ? AppData.getMaxStreamingBitrateBps() : 20000000
+            var url = AppData.liveServerUrl + "/Videos/" + activeMedia.id + "/master.m3u8?" +
+                      "MediaSourceId=" + msId +
+                      "&VideoCodec=h264,hevc" +
+                      "&AudioCodec=aac,mp3" +
+                      "&MaxStreamingBitrate=" + maxBitrate +
+                      "&PlaySessionId=" + activeMedia.id + "_session" +
+                      "&api_key=" + AppData.accessToken
+            return url
         }
         return ""
     }
@@ -39,6 +81,29 @@ Item {
         z: -1
     }
 
+    function applyInitialSeek() {
+        if (pendingInitialSeek && targetResumePosition > 0) {
+            console.log("[PLAYER] Applying initial resume seek to position: " + targetResumePosition + "s")
+            mediaStreamPlayer.position = targetResumePosition * 1000
+            if (typeof mediaStreamPlayer.setPosition === "function") {
+                mediaStreamPlayer.setPosition(targetResumePosition * 1000)
+            }
+            pendingInitialSeek = false
+        }
+    }
+
+    function performSeek(targetSec) {
+        targetSec = Math.max(0, Math.min(totalDuration, targetSec))
+        currentPosition = targetSec
+        mediaStreamPlayer.position = targetSec * 1000
+        if (typeof mediaStreamPlayer.setPosition === "function") {
+            mediaStreamPlayer.setPosition(targetSec * 1000)
+        }
+        if (activeMedia && activeMedia.id) {
+            AppData.reportPlaybackProgress(activeMedia.id, currentPosition, !isPlaying, "seek")
+        }
+    }
+
     // Native Hardware-Accelerated Video Player
     MediaPlayer {
         id: mediaStreamPlayer
@@ -47,7 +112,9 @@ Item {
         audioOutput: AudioOutput { id: audioOut; volume: 1.0 }
 
         onPositionChanged: {
-            if (mediaStreamPlayer.position > 0) {
+            if (pendingInitialSeek) {
+                applyInitialSeek()
+            } else if (!isScrubbing && mediaStreamPlayer.position >= 0) {
                 playerOverlay.currentPosition = Math.floor(mediaStreamPlayer.position / 1000)
             }
         }
@@ -60,9 +127,16 @@ Item {
 
         onPlaybackStateChanged: {
             playerOverlay.isPlaying = (mediaStreamPlayer.playbackState === MediaPlayer.PlayingState)
+            if (mediaStreamPlayer.playbackState === MediaPlayer.PlayingState && pendingInitialSeek) {
+                applyInitialSeek()
+            }
         }
 
         onMediaStatusChanged: {
+            if (mediaStreamPlayer.mediaStatus === MediaPlayer.LoadedMedia || 
+                mediaStreamPlayer.mediaStatus === MediaPlayer.BufferedMedia) {
+                applyInitialSeek()
+            }
             if (mediaStreamPlayer.mediaStatus === MediaPlayer.EndOfMedia) {
                 if (activeMedia && activeMedia.id) {
                     AppData.reportPlaybackStopped(activeMedia.id, totalDuration)
@@ -89,14 +163,30 @@ Item {
     onActiveMediaChanged: {
         if (activeMedia && activeMedia.rawData && activeMedia.rawData.RunTimeTicks) {
             totalDuration = Math.round(activeMedia.rawData.RunTimeTicks / 10000000)
+        } else if (activeMedia && activeMedia.duration) {
+            var parsedDur = parseFloat(activeMedia.duration)
+            if (!isNaN(parsedDur) && parsedDur > 0) totalDuration = parsedDur
+            else totalDuration = 1440.0
         } else {
             totalDuration = 1440.0
         }
 
+        var resumeSec = getResumePositionSeconds(activeMedia)
+        if (resumeSec > 0 && resumeSec < totalDuration - 10) {
+            targetResumePosition = resumeSec
+            currentPosition = resumeSec
+            pendingInitialSeek = true
+            console.log("[PLAYER] Resuming playback at " + resumeSec + " seconds (" + formatTime(resumeSec) + " / " + formatTime(totalDuration) + ")")
+        } else {
+            targetResumePosition = 0
+            currentPosition = 0
+            pendingInitialSeek = false
+        }
+
         if (activeMedia && activeMedia.id) {
             console.log("[VIDEO PLAYER] Streaming video URL: " + streamUrl)
-            mediaStreamPlayer.play()
             AppData.reportPlaybackStart(activeMedia.id, currentPosition)
+            mediaStreamPlayer.play()
 
             // Auto-enter fullscreen mode when show is added/played if not Plasma Bigscreen
             var isBigscreen = (typeof isPlasmaBigscreenEnv !== "undefined") ? isPlasmaBigscreenEnv : false
@@ -104,14 +194,6 @@ Item {
                 console.log("[PLAYER] Desktop environment detected: Auto entering Fullscreen mode")
                 rootWindow.showFullScreen()
             }
-        }
-
-        if (activeMedia && activeMedia.rawData && activeMedia.rawData.UserData && activeMedia.rawData.UserData.PlaybackPositionTicks > 0) {
-            currentPosition = Math.floor(activeMedia.rawData.UserData.PlaybackPositionTicks / 10000000)
-            mediaStreamPlayer.setPosition(currentPosition * 1000)
-            console.log("[PLAYER] Resuming playback at " + currentPosition + " seconds (" + formatTime(currentPosition) + " / " + formatTime(totalDuration) + ")")
-        } else {
-            currentPosition = 0
         }
     }
 
@@ -421,27 +503,70 @@ Item {
                             color: "#00f0ff"
                         }
 
+                        // Visual Handle Knob for Dragging / Scrubbing
+                        Rectangle {
+                            id: seekHandle
+                            width: (seekTrack.activeFocus || seekMouseArea.containsMouse || playerOverlay.isScrubbing) ? 20 : 14
+                            height: (seekTrack.activeFocus || seekMouseArea.containsMouse || playerOverlay.isScrubbing) ? 20 : 14
+                            radius: height / 2
+                            color: (seekTrack.activeFocus || playerOverlay.isScrubbing) ? "#00f0ff" : "#ffffff"
+                            border.color: "#0284c7"
+                            border.width: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: Math.max(0, Math.min(seekTrack.width - width, (seekTrack.width * (totalDuration > 0 ? (currentPosition / totalDuration) : 0)) - width / 2))
+                            Behavior on width { NumberAnimation { duration: 100 } }
+                            Behavior on height { NumberAnimation { duration: 100 } }
+                        }
+
+                        function handleScrub(mouseX) {
+                            if (seekTrack.width <= 0 || totalDuration <= 0) return
+                            var ratio = Math.max(0, Math.min(1.0, mouseX / seekTrack.width))
+                            currentPosition = ratio * totalDuration
+                        }
+
                         MouseArea {
+                            id: seekMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
+                            preventStealing: true
+
+                            onPressed: function(mouse) {
+                                wakeControls()
+                                playerOverlay.isScrubbing = true
+                                seekTrack.handleScrub(mouse.x)
+                            }
+
+                            onPositionChanged: function(mouse) {
+                                if (pressed) {
+                                    wakeControls()
+                                    playerOverlay.isScrubbing = true
+                                    seekTrack.handleScrub(mouse.x)
+                                }
+                            }
+
+                            onReleased: function(mouse) {
+                                wakeControls()
+                                seekTrack.handleScrub(mouse.x)
+                                playerOverlay.isScrubbing = false
+                                performSeek(currentPosition)
+                            }
+
                             onClicked: function(mouse) {
                                 wakeControls()
-                                var ratio = Math.max(0, Math.min(1.0, mouse.x / seekTrack.width))
-                                currentPosition = ratio * totalDuration
-                                mediaStreamPlayer.setPosition(currentPosition * 1000)
+                                seekTrack.handleScrub(mouse.x)
+                                playerOverlay.isScrubbing = false
+                                performSeek(currentPosition)
                             }
                         }
 
                         Keys.onLeftPressed: {
                             wakeControls()
-                            currentPosition = Math.max(0, currentPosition - 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.max(0, currentPosition - 10))
                         }
                         Keys.onRightPressed: {
                             wakeControls()
-                            currentPosition = Math.min(totalDuration, currentPosition + 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.min(totalDuration, currentPosition + 10))
                         }
                         Keys.onDownPressed: playPauseBtn.forceActiveFocus()
                         Keys.onUpPressed: playerBackBtn.forceActiveFocus()
@@ -487,20 +612,17 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 wakeControls()
-                                currentPosition = Math.max(0, currentPosition - 10)
-                                mediaStreamPlayer.setPosition(currentPosition * 1000)
+                                performSeek(Math.max(0, currentPosition - 10))
                             }
                         }
 
                         Keys.onReturnPressed: {
                             wakeControls()
-                            currentPosition = Math.max(0, currentPosition - 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.max(0, currentPosition - 10))
                         }
                         Keys.onSelectPressed: {
                             wakeControls()
-                            currentPosition = Math.max(0, currentPosition - 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.max(0, currentPosition - 10))
                         }
                         Keys.onLeftPressed: playerBackBtn.forceActiveFocus()
                         Keys.onRightPressed: playPauseBtn.forceActiveFocus()
@@ -582,20 +704,17 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 wakeControls()
-                                currentPosition = Math.min(totalDuration, currentPosition + 10)
-                                mediaStreamPlayer.setPosition(currentPosition * 1000)
+                                performSeek(Math.min(totalDuration, currentPosition + 10))
                             }
                         }
 
                         Keys.onReturnPressed: {
                             wakeControls()
-                            currentPosition = Math.min(totalDuration, currentPosition + 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.min(totalDuration, currentPosition + 10))
                         }
                         Keys.onSelectPressed: {
                             wakeControls()
-                            currentPosition = Math.min(totalDuration, currentPosition + 10)
-                            mediaStreamPlayer.setPosition(currentPosition * 1000)
+                            performSeek(Math.min(totalDuration, currentPosition + 10))
                         }
                         Keys.onLeftPressed: playPauseBtn.forceActiveFocus()
                         Keys.onRightPressed: subBtn.forceActiveFocus()
@@ -657,12 +776,10 @@ Item {
             playerOverlay.exitPlayer()
             event.accepted = true
         } else if (event.key === Qt.Key_J) {
-            currentPosition = Math.max(0, currentPosition - 10)
-            mediaStreamPlayer.setPosition(currentPosition * 1000)
+            performSeek(Math.max(0, currentPosition - 10))
             event.accepted = true
         } else if (event.key === Qt.Key_L) {
-            currentPosition = Math.min(totalDuration, currentPosition + 10)
-            mediaStreamPlayer.setPosition(currentPosition * 1000)
+            performSeek(Math.min(totalDuration, currentPosition + 10))
             event.accepted = true
         } else if (event.key === Qt.Key_M) {
             audioOut.muted = !audioOut.muted
