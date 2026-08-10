@@ -49,8 +49,25 @@ if ! command -v qmlscene >/dev/null 2>&1 && ! command -v qml6 >/dev/null 2>&1 &&
     fi
 fi
 
+# Auto-update Bigfin by pulling new commits from remote repository
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log_msg "[INFO] Checking for auto-updates (pulling latest git version)..."
+    BEFORE_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if git pull --ff-only >/dev/null 2>&1 || git pull >/dev/null 2>&1; then
+        AFTER_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
+        if [ -n "$BEFORE_REV" ] && [ "$BEFORE_REV" != "$AFTER_REV" ]; then
+            log_msg "[SUCCESS] Pulled new version (${BEFORE_REV:0:7} -> ${AFTER_REV:0:7}). Rebuilding binary..."
+            NEED_REBUILD=1
+        else
+            log_msg "[INFO] Already up to date."
+        fi
+    else
+        log_msg "[WARN] Could not pull remote updates (offline or local modifications present)."
+    fi
+fi
+
 # Auto-rebuild binary if missing or if Go source files have been updated
-NEED_REBUILD=0
+NEED_REBUILD=${NEED_REBUILD:-0}
 if [ ! -f "$SCRIPT_DIR/bin/bigfin_app" ]; then
     NEED_REBUILD=1
 elif [ -n "$(find "$SCRIPT_DIR/cmd" "$SCRIPT_DIR/pkg" -type f -name "*.go" -newer "$SCRIPT_DIR/bin/bigfin_app" 2>/dev/null)" ]; then
@@ -234,6 +251,21 @@ class SessionBridge(QObject):
     @pyqtSlot(str, str, str, int)
     def reportPlaybackStopped(self, serverUrl, token, itemId, positionSec):
         pass
+
+    @pyqtSlot(result=str)
+    def checkForUpdates(self):
+        try:
+            import subprocess
+            res = subprocess.run(['git', 'pull'], capture_output=True, text=True, timeout=15)
+            if res.returncode == 0:
+                out = res.stdout.strip()
+                if 'Already up to date' in out or 'Already up-to-date' in out:
+                    return 'Already up to date.'
+                return f'Auto-updated: {out}'
+            else:
+                return f'Notice: {res.stderr.strip() or res.stdout.strip()}'
+        except Exception as e:
+            return f'Update error: {str(e)}'
 
 app = QGuiApplication(sys.argv)
 app.setApplicationName('bigfin')

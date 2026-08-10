@@ -1019,6 +1019,51 @@ func TestAdaptiveStreamingAndBitrateAutoScaling(t *testing.T) {
 	}
 }
 
+// TestAutoUpdateFeatureIntegration verifies that auto update via git pull is integrated across launcher script, Go main backend, QML settings and Python SessionBridge.
+func TestAutoUpdateFeatureIntegration(t *testing.T) {
+	// 1. Check run_bigfin.sh contains git pull auto-update logic and SessionBridge slot
+	scriptPath := filepath.Join("..", "..", "run_bigfin.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("Failed to read run_bigfin.sh: %v", err)
+	}
+	scriptContent := string(scriptBytes)
+	if !strings.Contains(scriptContent, "git pull") {
+		t.Errorf("run_bigfin.sh missing git pull auto-update logic!")
+	}
+	if !strings.Contains(scriptContent, "checkForUpdates") {
+		t.Errorf("run_bigfin.sh SessionBridge missing checkForUpdates slot!")
+	}
+
+	// 2. Check main.go imports autoupdate package and invokes ExecuteAutoUpdate
+	mainPath := filepath.Join("..", "..", "cmd", "bigfin", "main.go")
+	mainBytes, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
+	}
+	mainContent := string(mainBytes)
+	if !strings.Contains(mainContent, "autoupdate.ExecuteAutoUpdate()") {
+		t.Errorf("main.go missing autoupdate.ExecuteAutoUpdate() call!")
+	}
+	if !strings.Contains(mainContent, "checkForUpdates") {
+		t.Errorf("main.go SessionBridge missing checkForUpdates slot!")
+	}
+
+	// 3. Check SettingsView.qml includes Auto Update options
+	settingsPath := filepath.Join("..", "..", "ui", "qml", "SettingsView.qml")
+	settingsBytes, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("Failed to read SettingsView.qml: %v", err)
+	}
+	settingsContent := string(settingsBytes)
+	if !strings.Contains(settingsContent, "Auto Update Client (Git Pull)") {
+		t.Errorf("SettingsView.qml missing Auto Update Client (Git Pull) option!")
+	}
+	if !strings.Contains(settingsContent, "SessionBridge.checkForUpdates") {
+		t.Errorf("SettingsView.qml missing SessionBridge.checkForUpdates invocation!")
+	}
+}
+
 
 
 

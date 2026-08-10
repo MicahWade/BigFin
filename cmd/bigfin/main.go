@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"bigfin/pkg/autoupdate"
 	"bigfin/pkg/jellyfin"
 	"bigfin/pkg/player"
 )
@@ -23,6 +24,9 @@ func main() {
 		multiWriter := io.MultiWriter(os.Stdout, logFile)
 		log.SetOutput(multiWriter)
 	}
+
+	// Perform auto-update by pulling latest git version
+	autoupdate.ExecuteAutoUpdate()
 
 	// Extend PATH for standalone Go execution and Qt6 QML tools
 	homeDir, _ := os.UserHomeDir()
@@ -246,6 +250,21 @@ class SessionBridge(QObject):
     @pyqtSlot(str, str, str, int)
     def reportPlaybackStopped(self, serverUrl, token, itemId, positionSec):
         pass
+
+    @pyqtSlot(result=str)
+    def checkForUpdates(self):
+        try:
+            import subprocess
+            res = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=15)
+            if res.returncode == 0:
+                out = res.stdout.strip()
+                if "Already up to date" in out or "Already up-to-date" in out:
+                    return "Already up to date."
+                return f"Auto-updated: {out}"
+            else:
+                return f"Notice: {res.stderr.strip() or res.stdout.strip()}"
+        except Exception as e:
+            return f"Update error: {str(e)}"
 
 app = QGuiApplication(sys.argv)
 app.setApplicationName("bigfin")

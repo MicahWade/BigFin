@@ -76,9 +76,10 @@ Item {
     property var subTextColors: ["White", "Yellow", "Cyan"]
     property int subTextColorIdx: 0
 
-    // Category 6: System Diagnostics & Cache (3 items)
+    // Category 6: System Diagnostics & Cache (4 items)
     property string cacheSizeText: "2.4 GB Clean Cache"
     property bool debugLoggingEnabled: false
+    property string autoUpdateStatusText: "CHECK FOR UPDATES"
 
     property alias defaultFocusItem: masterListView
 
@@ -90,7 +91,7 @@ Item {
         { id: 3, title: "Hardware GPU Acceleration", desc: "libmpv video renderer engine, VAAPI / NVDEC decoder, AFR mode", icon: "assets/icons/tv.svg", itemCount: 4 },
         { id: 4, title: "Audio Devices & Passthrough", desc: "HDMI passthrough, surround sound, default audio track, DRC night mode", icon: "assets/icons/info.svg", itemCount: 5 },
         { id: 5, title: "Subtitles & Closed Captions", desc: "Subtitle selection mode, language priority, burn-in policy, font size", icon: "assets/icons/favorites.svg", itemCount: 5 },
-        { id: 6, title: "System Diagnostics & Cache", desc: "Offline thumbnail cache, debug log output, settings reset", icon: "assets/icons/settings.svg", itemCount: 3 }
+        { id: 6, title: "System Diagnostics & Cache", desc: "Offline thumbnail cache, auto update via git pull, debug log output, settings reset", icon: "assets/icons/settings.svg", itemCount: 4 }
     ]
 
     ColumnLayout {
@@ -612,7 +613,8 @@ Item {
         }
         if (catIdx === 6) {
             if (itemIdx === 0) return "Offline Storage & Metadata Cache"
-            if (itemIdx === 1) return "Enable Debug Log Output"
+            if (itemIdx === 1) return "Auto Update Client (Git Pull)"
+            if (itemIdx === 2) return "Enable Debug Log Output"
             return "Reset Bigfin Configuration"
         }
         return "Option " + (itemIdx + 1)
@@ -643,6 +645,12 @@ Item {
             if (itemIdx === 3) return "Bypass transcoding for next-gen AV1 open video streams"
             if (itemIdx === 4) return "Upper resolution bound if video must be transcoded"
             return "Minimum playback progress percentage before saving resume point"
+        }
+        if (catIdx === 6) {
+            if (itemIdx === 0) return "Clear or check offline thumbnail cache and temporary assets"
+            if (itemIdx === 1) return "Pull latest client versions automatically from git remote repository"
+            if (itemIdx === 2) return "Enable diagnostic debug logs for playback and UI events"
+            return "Reset all settings to default configuration"
         }
         return "Configure option settings"
     }
@@ -695,7 +703,8 @@ Item {
         }
         if (catIdx === 6) {
             if (itemIdx === 0) return cacheSizeText
-            if (itemIdx === 1) return debugLoggingEnabled ? "ENABLED" : "DISABLED"
+            if (itemIdx === 1) return autoUpdateStatusText
+            if (itemIdx === 2) return debugLoggingEnabled ? "ENABLED" : "DISABLED"
             return "RESET TO DEFAULT"
         }
         return "ENABLED"
@@ -764,7 +773,16 @@ Item {
                 if (cacheSizeText === "2.4 GB Clean Cache") cacheSizeText = "0 MB (Cleared)"
                 else cacheSizeText = "2.4 GB Clean Cache"
             }
-            else if (itemIdx === 1) debugLoggingEnabled = !debugLoggingEnabled
+            else if (itemIdx === 1) {
+                autoUpdateStatusText = "PULLING..."
+                if (typeof SessionBridge !== "undefined" && SessionBridge.checkForUpdates) {
+                    var res = SessionBridge.checkForUpdates()
+                    autoUpdateStatusText = res ? res.substring(0, 20) : "PULLED LATEST"
+                } else {
+                    autoUpdateStatusText = "PULLED LATEST"
+                }
+            }
+            else if (itemIdx === 2) debugLoggingEnabled = !debugLoggingEnabled
             else {
                 serverUrl = "http://localhost:8096"; autoDiscovery = true; sslBypass = false;
                 startupViewEnabled = true; themeStyleIdx = 0; AppData.activeThemeIndex = 0;
