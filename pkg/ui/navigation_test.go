@@ -1178,6 +1178,65 @@ func TestHeadphoneAndMPRISMediaControlIntegration(t *testing.T) {
 	}
 }
 
+// TestNextEpisodePlaybackAndAutoPlay verifies that:
+// 1. AppData.qml implements getNextEpisode function for resolving next TV episode.
+// 2. PlayerOverlay.qml contains isEpisode property, nextEpBtn control button, playNextEpisode function, and auto-plays next episode on EndOfMedia.
+// 3. Main.qml handleGlobalNext routes media next events to playNextEpisode when an episode is playing.
+func TestNextEpisodePlaybackAndAutoPlay(t *testing.T) {
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	adBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	adContent := string(adBytes)
+
+	if !strings.Contains(adContent, "function getNextEpisode(currentEp, callback)") {
+		t.Errorf("AppData.qml missing function getNextEpisode(currentEp, callback)!")
+	}
+
+	playerOverlayPath := filepath.Join("..", "..", "ui", "qml", "PlayerOverlay.qml")
+	poBytes, err := os.ReadFile(playerOverlayPath)
+	if err != nil {
+		t.Fatalf("Failed to read PlayerOverlay.qml: %v", err)
+	}
+	poContent := string(poBytes)
+
+	expectedPlayerTokens := []string{
+		"readonly property bool isEpisode:",
+		"function playNextEpisode()",
+		"AppData.getNextEpisode(activeMedia",
+		"id: nextEpBtn",
+		"visible: playerOverlay.isEpisode",
+		"playNextEpisode()",
+	}
+	for _, tok := range expectedPlayerTokens {
+		if !strings.Contains(poContent, tok) {
+			t.Errorf("PlayerOverlay.qml missing next episode token: %s", tok)
+		}
+	}
+
+	endOfMediaIdx := strings.Index(poContent, "MediaPlayer.EndOfMedia")
+	if endOfMediaIdx == -1 {
+		t.Fatalf("PlayerOverlay.qml missing MediaPlayer.EndOfMedia handler!")
+	}
+	endOfMediaBlock := poContent[endOfMediaIdx : endOfMediaIdx+500]
+	if !strings.Contains(endOfMediaBlock, "playNextEpisode()") {
+		t.Errorf("PlayerOverlay.qml EndOfMedia handler must invoke playNextEpisode() for continuous playback!")
+	}
+
+	mainQmlPath := filepath.Join("..", "..", "ui", "qml", "Main.qml")
+	mainBytes, err := os.ReadFile(mainQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read Main.qml: %v", err)
+	}
+	mainContent := string(mainBytes)
+
+	if !strings.Contains(mainContent, "playerLoader.item.playNextEpisode()") {
+		t.Errorf("Main.qml handleGlobalNext must invoke playNextEpisode() when video player is active on an episode!")
+	}
+}
+
+
 
 
 

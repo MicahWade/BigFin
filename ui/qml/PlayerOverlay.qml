@@ -22,6 +22,32 @@ Item {
 
     property var activeMedia: item ? item : (typeof mainShell !== "undefined" && mainShell && mainShell.selectedMediaItem ? mainShell.selectedMediaItem : AppData.featuredHero)
 
+    readonly property bool isEpisode: {
+        if (!activeMedia) return false
+        var mType = activeMedia.mediaType || (activeMedia.rawData ? activeMedia.rawData.Type : "")
+        if (mType === "Episode" || mType === "episode") return true
+        if (activeMedia.seriesId || (activeMedia.rawData && activeMedia.rawData.SeriesId)) return true
+        if (activeMedia.seasonId || (activeMedia.rawData && activeMedia.rawData.SeasonId)) return true
+        return false
+    }
+
+    function playNextEpisode() {
+        if (!activeMedia || !isEpisode) return
+        console.log("[PLAYER] Requesting next episode for: " + (activeMedia.title || activeMedia.name || ""))
+        AppData.getNextEpisode(activeMedia, function(nextEp) {
+            if (nextEp && nextEp.id && nextEp.id !== activeMedia.id) {
+                console.log("[PLAYER] Playing next episode: " + nextEp.title + " (ID: " + nextEp.id + ")")
+                if (typeof mainShell !== "undefined" && mainShell) {
+                    mainShell.selectedMediaItem = nextEp
+                }
+                playerOverlay.item = nextEp
+            } else {
+                console.log("[PLAYER] No next episode available. Exiting player.")
+                exitPlayer()
+            }
+        })
+    }
+
     function getResumePositionTicks(media) {
         if (!media) return 0
         if (media.rawData && media.rawData.UserData && media.rawData.UserData.PlaybackPositionTicks > 0) {
@@ -145,6 +171,9 @@ Item {
                 if (activeMedia && activeMedia.id) {
                     AppData.reportPlaybackStopped(activeMedia.id, totalDuration)
                     AppData.fetchContinueWatching()
+                }
+                if (isEpisode) {
+                    playNextEpisode()
                 }
             }
         }
@@ -725,6 +754,59 @@ Item {
                             performSeek(Math.min(totalDuration, currentPosition + 10))
                         }
                         Keys.onLeftPressed: playPauseBtn.forceActiveFocus()
+                        Keys.onRightPressed: nextEpBtn.visible ? nextEpBtn.forceActiveFocus() : subBtn.forceActiveFocus()
+                        Keys.onUpPressed: seekTrack.forceActiveFocus()
+                    }
+
+                    // Next Episode Button (visible when playing a TV Episode)
+                    Rectangle {
+                        id: nextEpBtn
+                        width: 120
+                        height: 40
+                        radius: 20
+                        visible: playerOverlay.isEpisode
+                        color: activeFocus ? "#0284c7" : "#1e293b"
+                        border.color: activeFocus ? "#00f0ff" : "#475569"
+                        border.width: activeFocus ? 4 : 1
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Image {
+                                width: 14
+                                height: 14
+                                source: "assets/icons/forward.svg"
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            Text {
+                                text: "Next Ep"
+                                font.pixelSize: 12
+                                font.bold: true
+                                color: "#ffffff"
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                wakeControls()
+                                playerOverlay.playNextEpisode()
+                            }
+                        }
+
+                        Keys.onReturnPressed: {
+                            wakeControls()
+                            playerOverlay.playNextEpisode()
+                        }
+                        Keys.onSelectPressed: {
+                            wakeControls()
+                            playerOverlay.playNextEpisode()
+                        }
+                        Keys.onLeftPressed: forwardBtn.forceActiveFocus()
                         Keys.onRightPressed: subBtn.forceActiveFocus()
                         Keys.onUpPressed: seekTrack.forceActiveFocus()
                     }
@@ -767,7 +849,7 @@ Item {
                             wakeControls()
                             activeSubtitleTrack = (activeSubtitleTrack.indexOf("SDH") !== -1 ? "Off" : "English [SDH]")
                         }
-                        Keys.onLeftPressed: forwardBtn.forceActiveFocus()
+                        Keys.onLeftPressed: nextEpBtn.visible ? nextEpBtn.forceActiveFocus() : forwardBtn.forceActiveFocus()
                         Keys.onUpPressed: seekTrack.forceActiveFocus()
                     }
                 }

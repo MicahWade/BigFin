@@ -1343,6 +1343,79 @@ Item {
         xhr.send()
     }
 
+    function getNextEpisode(currentEp, callback) {
+        if (!callback) return
+        if (!currentEp) {
+            callback(null)
+            return
+        }
+
+        var sId = currentEp.seriesId || (currentEp.rawData ? currentEp.rawData.SeriesId : "")
+        var curId = currentEp.id || (currentEp.rawData ? currentEp.rawData.Id : "")
+
+        if (!sId) {
+            callback(null)
+            return
+        }
+
+        fetchNextUpForSeries(sId, function(nextUpEp) {
+            if (nextUpEp && nextUpEp.id && nextUpEp.id !== curId) {
+                console.log("[JELLYFIN API] getNextEpisode found via NextUp: " + nextUpEp.title + " (" + nextUpEp.epCode + ")")
+                callback(nextUpEp)
+                return
+            }
+
+            fetchEpisodes(sId, null, function(allEpisodes) {
+                if (!allEpisodes || allEpisodes.length === 0) {
+                    callback(null)
+                    return
+                }
+
+                var matchIdx = -1
+                for (var i = 0; i < allEpisodes.length; i++) {
+                    if (allEpisodes[i].id === curId) {
+                        matchIdx = i
+                        break
+                    }
+                }
+
+                if (matchIdx !== -1 && matchIdx + 1 < allEpisodes.length) {
+                    console.log("[JELLYFIN API] getNextEpisode found via series list index: " + allEpisodes[matchIdx + 1].title + " (" + allEpisodes[matchIdx + 1].epCode + ")")
+                    callback(allEpisodes[matchIdx + 1])
+                    return
+                }
+
+                var curS = parseInt(currentEp.seasonNumber || (currentEp.rawData ? currentEp.rawData.ParentIndexNumber : 0))
+                var curE = parseInt(currentEp.episodeNumber || (currentEp.rawData ? currentEp.rawData.IndexNumber : 0))
+
+                if (!isNaN(curS) && !isNaN(curE) && curE > 0) {
+                    for (var j = 0; j < allEpisodes.length; j++) {
+                        var ep = allEpisodes[j]
+                        var epS = parseInt(ep.seasonNumber || (ep.rawData ? ep.rawData.ParentIndexNumber : 0))
+                        var epE = parseInt(ep.episodeNumber || (ep.rawData ? ep.rawData.IndexNumber : 0))
+                        if (epS === curS && epE === curE + 1) {
+                            console.log("[JELLYFIN API] getNextEpisode found via season/episode number match: " + ep.title + " (" + ep.epCode + ")")
+                            callback(ep)
+                            return
+                        }
+                    }
+                    for (var k = 0; k < allEpisodes.length; k++) {
+                        var epNextS = allEpisodes[k]
+                        var epS2 = parseInt(epNextS.seasonNumber || (epNextS.rawData ? epNextS.rawData.ParentIndexNumber : 0))
+                        var epE2 = parseInt(epNextS.episodeNumber || (epNextS.rawData ? epNextS.rawData.IndexNumber : 0))
+                        if (epS2 === curS + 1 && (epE2 === 1 || epE2 === 0)) {
+                            console.log("[JELLYFIN API] getNextEpisode found via next season start: " + epNextS.title + " (" + epNextS.epCode + ")")
+                            callback(epNextS)
+                            return
+                        }
+                    }
+                }
+
+                callback(null)
+            })
+        })
+    }
+
     function fetchMovies() {
         if (!liveServerUrl || !userId) return
         var cached = getCachedData("movies")

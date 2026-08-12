@@ -647,7 +647,9 @@ Item {
     function handleGlobalNext() {
         console.log("[MEDIA KEY] Next track/seek triggered (Headphone / System Key)")
         if (typeof playerLoader !== "undefined" && playerLoader.item && playerLoader.active) {
-            if (typeof playerLoader.item.performSeek === "function" && typeof playerLoader.item.currentPosition !== "undefined") {
+            if (typeof playerLoader.item.isEpisode !== "undefined" && playerLoader.item.isEpisode && typeof playerLoader.item.playNextEpisode === "function") {
+                playerLoader.item.playNextEpisode()
+            } else if (typeof playerLoader.item.performSeek === "function" && typeof playerLoader.item.currentPosition !== "undefined") {
                 playerLoader.item.performSeek(playerLoader.item.currentPosition + 10)
             }
         } else if (AppData.currentMusicTrack !== null) {
