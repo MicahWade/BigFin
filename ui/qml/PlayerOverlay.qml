@@ -92,6 +92,10 @@ Item {
         }
     }
 
+    function togglePlayPause() {
+        isPlaying = !isPlaying
+    }
+
     function performSeek(targetSec) {
         targetSec = Math.max(0, Math.min(totalDuration, targetSec))
         currentPosition = targetSec
@@ -147,6 +151,10 @@ Item {
     }
 
     onIsPlayingChanged: {
+        if (typeof SessionBridge !== "undefined" && SessionBridge && typeof SessionBridge.updateMprisState === "function") {
+            var mediaTitle = activeMedia ? (activeMedia.name || activeMedia.title || "") : ""
+            SessionBridge.updateMprisState(isPlaying ? "Playing" : "Paused", mediaTitle, "", "")
+        }
         if (isPlaying) {
             mediaStreamPlayer.play()
             if (activeMedia && activeMedia.id) {

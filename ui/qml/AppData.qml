@@ -62,6 +62,15 @@ Item {
 
     signal musicTrackChanged(var track)
 
+    onIsMusicPlayingChanged: {
+        if (typeof SessionBridge !== "undefined" && SessionBridge && typeof SessionBridge.updateMprisState === "function") {
+            var trackName = currentMusicTrack ? (currentMusicTrack.title || currentMusicTrack.name || "") : ""
+            var artistName = currentMusicTrack ? (currentMusicTrack.artist || "") : ""
+            var albumName = currentMusicTrack ? (currentMusicTrack.album || "") : ""
+            SessionBridge.updateMprisState(isMusicPlaying ? "Playing" : "Paused", trackName, artistName, albumName)
+        }
+    }
+
     function isMusicMedia(item) {
         if (!item) return false
         var mType = (item.mediaType || item.Type || (item.rawData ? item.rawData.Type : "")).toLowerCase()

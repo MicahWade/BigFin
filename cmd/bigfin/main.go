@@ -132,7 +132,8 @@ func main() {
 		pythonScript := `import sys, os, json, time
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
-from PyQt6.QtCore import QObject, pyqtSlot, qInstallMessageHandler, QtMsgType
+from PyQt6.QtCore import QObject, pyqtSlot, pyqtSignal, pyqtProperty, qInstallMessageHandler, QtMsgType
+from PyQt6.QtDBus import QDBusConnection
 
 log_file_path = "/tmp/bigfin_launch.log"
 
@@ -158,6 +159,103 @@ config_dir = os.path.expanduser("~/.config/bigfin")
 config_file = os.path.join(config_dir, "sessions.json")
 
 class SessionBridge(QObject):
+    mediaPlayPauseRequested = pyqtSignal()
+    mediaNextRequested = pyqtSignal()
+    mediaPreviousRequested = pyqtSignal()
+    mediaStopRequested = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self._mprisStatus = "Playing"
+        self._mprisTitle = ""
+        self._mprisArtist = ""
+        self._mprisAlbum = ""
+
+    @pyqtSlot()
+    def PlayPause(self):
+        print("[MPRIS] Headphone / System PlayPause event received!")
+        self.mediaPlayPauseRequested.emit()
+
+    @pyqtSlot()
+    def Play(self):
+        print("[MPRIS] Headphone / System Play event received!")
+        self.mediaPlayPauseRequested.emit()
+
+    @pyqtSlot()
+    def Pause(self):
+        print("[MPRIS] Headphone / System Pause event received!")
+        self.mediaPlayPauseRequested.emit()
+
+    @pyqtSlot()
+    def Next(self):
+        print("[MPRIS] Headphone / System Next event received!")
+        self.mediaNextRequested.emit()
+
+    @pyqtSlot()
+    def Previous(self):
+        print("[MPRIS] Headphone / System Previous event received!")
+        self.mediaPreviousRequested.emit()
+
+    @pyqtSlot()
+    def Stop(self):
+        print("[MPRIS] Headphone / System Stop event received!")
+        self.mediaStopRequested.emit()
+
+    @pyqtSlot()
+    def Raise(self):
+        pass
+
+    @pyqtSlot()
+    def Quit(self):
+        pass
+
+    @pyqtProperty(str)
+    def PlaybackStatus(self):
+        return self._mprisStatus
+
+    @pyqtProperty(bool)
+    def CanControl(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanPlay(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanPause(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanGoNext(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanGoPrevious(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanQuit(self):
+        return True
+
+    @pyqtProperty(bool)
+    def CanRaise(self):
+        return True
+
+    @pyqtProperty(str)
+    def Identity(self):
+        return "Bigfin Media Player"
+
+    @pyqtProperty(str)
+    def DesktopEntry(self):
+        return "bigfin"
+
+    @pyqtSlot(str, str, str, str)
+    def updateMprisState(self, status, title="", artist="", album=""):
+        self._mprisStatus = status
+        self._mprisTitle = title
+        self._mprisArtist = artist
+        self._mprisAlbum = album
+
     @pyqtSlot(result=str)
     def loadSessionsJson(self):
         try:
@@ -281,6 +379,16 @@ app.setDesktopFileName("bigfin")
 engine = QQmlApplicationEngine()
 bridge = SessionBridge()
 engine.rootContext().setContextProperty("SessionBridge", bridge)
+
+try:
+    bus = QDBusConnection.sessionBus()
+    if bus.isConnected():
+        bus.registerService("org.mpris.MediaPlayer2.bigfin")
+        bus.registerObject("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player", bridge, QDBusConnection.RegisterOption.ExportAllSlots | QDBusConnection.RegisterOption.ExportAllProperties)
+        bus.registerObject("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2", bridge, QDBusConnection.RegisterOption.ExportAllSlots | QDBusConnection.RegisterOption.ExportAllProperties)
+        print("[MPRIS] Registered D-Bus service org.mpris.MediaPlayer2.bigfin successfully.")
+except Exception as e:
+    print("[MPRIS] Service registration notice:", e)
 
 qml_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
 engine.addImportPath(qml_dir)

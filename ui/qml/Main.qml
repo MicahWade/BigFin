@@ -624,6 +624,82 @@ Item {
         }
     }
 
+    // Global Headphone & System Media Control Action Handlers
+    function handleGlobalPlayPause() {
+        console.log("[MEDIA KEY] Play/Pause triggered (Headphone / System Key)")
+        if (typeof playerLoader !== "undefined" && playerLoader.item && playerLoader.active) {
+            if (typeof playerLoader.item.togglePlayPause === "function") {
+                playerLoader.item.togglePlayPause()
+            } else if (typeof playerLoader.item.isPlaying !== "undefined") {
+                playerLoader.item.isPlaying = !playerLoader.item.isPlaying
+            }
+        } else if (AppData.currentMusicTrack !== null) {
+            AppData.toggleMusicPlayPause()
+        } else if (mainShell.selectedMediaItem !== null) {
+            if (AppData.isMusicMedia(mainShell.selectedMediaItem)) {
+                AppData.playMusicItem(mainShell.selectedMediaItem)
+            } else {
+                switchView("details")
+            }
+        }
+    }
+
+    function handleGlobalNext() {
+        console.log("[MEDIA KEY] Next track/seek triggered (Headphone / System Key)")
+        if (typeof playerLoader !== "undefined" && playerLoader.item && playerLoader.active) {
+            if (typeof playerLoader.item.performSeek === "function" && typeof playerLoader.item.currentPosition !== "undefined") {
+                playerLoader.item.performSeek(playerLoader.item.currentPosition + 10)
+            }
+        } else if (AppData.currentMusicTrack !== null) {
+            AppData.nextMusicTrack()
+        }
+    }
+
+    function handleGlobalPrev() {
+        console.log("[MEDIA KEY] Previous track/seek triggered (Headphone / System Key)")
+        if (typeof playerLoader !== "undefined" && playerLoader.item && playerLoader.active) {
+            if (typeof playerLoader.item.performSeek === "function" && typeof playerLoader.item.currentPosition !== "undefined") {
+                playerLoader.item.performSeek(playerLoader.item.currentPosition - 10)
+            }
+        } else if (AppData.currentMusicTrack !== null) {
+            AppData.prevMusicTrack()
+        }
+    }
+
+    function handleGlobalStop() {
+        console.log("[MEDIA KEY] Stop triggered (Headphone / System Key)")
+        if (typeof playerLoader !== "undefined" && playerLoader.item && playerLoader.active) {
+            if (typeof playerLoader.item.exitPlayer === "function") {
+                playerLoader.item.exitPlayer()
+            }
+        } else if (AppData.currentMusicTrack !== null) {
+            AppData.isMusicPlaying = false
+        }
+    }
+
+    Connections {
+        target: (typeof SessionBridge !== "undefined") ? SessionBridge : null
+        ignoreUnknownSignals: true
+
+        function onMediaPlayPauseRequested() { handleGlobalPlayPause() }
+        function onMediaNextRequested() { handleGlobalNext() }
+        function onMediaPreviousRequested() { handleGlobalPrev() }
+        function onMediaStopRequested() { handleGlobalStop() }
+    }
+
+    Shortcut { sequence: "Media Play"; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: "Media Pause"; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: "Media Toggle Play/Pause"; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: "Media Next"; onActivated: handleGlobalNext() }
+    Shortcut { sequence: "Media Previous"; onActivated: handleGlobalPrev() }
+    Shortcut { sequence: "Media Stop"; onActivated: handleGlobalStop() }
+    Shortcut { sequence: StandardKey.MediaPlay; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: StandardKey.MediaPause; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: StandardKey.MediaTogglePlayPause; onActivated: handleGlobalPlayPause() }
+    Shortcut { sequence: StandardKey.MediaNext; onActivated: handleGlobalNext() }
+    Shortcut { sequence: StandardKey.MediaPrevious; onActivated: handleGlobalPrev() }
+    Shortcut { sequence: StandardKey.MediaStop; onActivated: handleGlobalStop() }
+
     // Global Key Bindings for Keyboard & Gamepad Controller
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {

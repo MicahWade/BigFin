@@ -1064,6 +1064,120 @@ func TestAutoUpdateFeatureIntegration(t *testing.T) {
 	}
 }
 
+// TestHeadphoneAndMPRISMediaControlIntegration verifies that MPRIS DBus registration,
+// headphone button signals, and hardware media key shortcuts are configured properly across Go, C++, and QML.
+func TestHeadphoneAndMPRISMediaControlIntegration(t *testing.T) {
+	// 1. Check main.go Python SessionBridge has MPRIS DBus registration and media signals
+	mainPath := filepath.Join("..", "..", "cmd", "bigfin", "main.go")
+	mainBytes, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
+	}
+	mainContent := string(mainBytes)
+
+	expectedMainTokens := []string{
+		"org.mpris.MediaPlayer2.bigfin",
+		"mediaPlayPauseRequested",
+		"mediaNextRequested",
+		"mediaPreviousRequested",
+		"mediaStopRequested",
+		"def PlayPause",
+		"def Next",
+		"def Previous",
+		"def Stop",
+		"updateMprisState",
+	}
+	for _, tok := range expectedMainTokens {
+		if !strings.Contains(mainContent, tok) {
+			t.Errorf("main.go missing MPRIS/Headphone token: %s", tok)
+		}
+	}
+
+	// 2. Check qml_bridge.cpp NativeSessionBridge has MPRIS DBus registration and media slots
+	cppPath := filepath.Join("..", "..", "cmd", "bigfin", "qml_bridge.cpp")
+	cppBytes, err := os.ReadFile(cppPath)
+	if err != nil {
+		t.Fatalf("Failed to read qml_bridge.cpp: %v", err)
+	}
+	cppContent := string(cppBytes)
+
+	expectedCppTokens := []string{
+		"org.mpris.MediaPlayer2.bigfin",
+		"mediaPlayPauseRequested",
+		"mediaNextRequested",
+		"mediaPreviousRequested",
+		"mediaStopRequested",
+		"void PlayPause()",
+		"void Next()",
+		"void Previous()",
+		"void Stop()",
+		"QDBusConnection::sessionBus()",
+	}
+	for _, tok := range expectedCppTokens {
+		if !strings.Contains(cppContent, tok) {
+			t.Errorf("qml_bridge.cpp missing MPRIS/Headphone token: %s", tok)
+		}
+	}
+
+	// 3. Check Main.qml has global headphone/media key handlers and shortcuts
+	mainQmlPath := filepath.Join("..", "..", "ui", "qml", "Main.qml")
+	mainQmlBytes, err := os.ReadFile(mainQmlPath)
+	if err != nil {
+		t.Fatalf("Failed to read Main.qml: %v", err)
+	}
+	mainQmlContent := string(mainQmlBytes)
+
+	expectedQmlTokens := []string{
+		"handleGlobalPlayPause",
+		"handleGlobalNext",
+		"handleGlobalPrev",
+		"handleGlobalStop",
+		"onMediaPlayPauseRequested",
+		"onMediaNextRequested",
+		"onMediaPreviousRequested",
+		"onMediaStopRequested",
+		"StandardKey.MediaPlay",
+		"StandardKey.MediaPause",
+		"StandardKey.MediaTogglePlayPause",
+		"StandardKey.MediaNext",
+		"StandardKey.MediaPrevious",
+		"StandardKey.MediaStop",
+	}
+	for _, tok := range expectedQmlTokens {
+		if !strings.Contains(mainQmlContent, tok) {
+			t.Errorf("Main.qml missing headphone/media key token: %s", tok)
+		}
+	}
+
+	// 4. Check PlayerOverlay.qml has togglePlayPause function and MPRIS state sync
+	playerOverlayPath := filepath.Join("..", "..", "ui", "qml", "PlayerOverlay.qml")
+	poBytes, err := os.ReadFile(playerOverlayPath)
+	if err != nil {
+		t.Fatalf("Failed to read PlayerOverlay.qml: %v", err)
+	}
+	poContent := string(poBytes)
+	if !strings.Contains(poContent, "function togglePlayPause()") {
+		t.Errorf("PlayerOverlay.qml missing function togglePlayPause()!")
+	}
+	if !strings.Contains(poContent, "updateMprisState") {
+		t.Errorf("PlayerOverlay.qml missing updateMprisState call!")
+	}
+
+	// 5. Check AppData.qml has onIsMusicPlayingChanged MPRIS sync
+	appDataPath := filepath.Join("..", "..", "ui", "qml", "AppData.qml")
+	adBytes, err := os.ReadFile(appDataPath)
+	if err != nil {
+		t.Fatalf("Failed to read AppData.qml: %v", err)
+	}
+	adContent := string(adBytes)
+	if !strings.Contains(adContent, "onIsMusicPlayingChanged") {
+		t.Errorf("AppData.qml missing onIsMusicPlayingChanged handler!")
+	}
+	if !strings.Contains(adContent, "updateMprisState") {
+		t.Errorf("AppData.qml missing updateMprisState call!")
+	}
+}
+
 
 
 
