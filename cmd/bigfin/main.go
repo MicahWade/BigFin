@@ -113,8 +113,15 @@ func main() {
 	if _, err := os.Stat(qmlPath); os.IsNotExist(err) {
 		log.Fatalf("[ERROR] QML main template missing at path: %s\n", qmlPath)
 	}
-
 	log.Println("[READY] Bigfin backend environment initialized. Launching QML TV window...")
+
+	log.Println("[INFO] Launching QML UI natively via CGo Qt6 Engine...")
+	ret := launchNativeQtQml(qmlPath)
+	if ret == 0 {
+		log.Println("[INFO] Native Qt QML session ended cleanly.")
+		return
+	}
+	log.Printf("[WARN] Native CGo Qt6 launcher returned code %d. Attempting fallbacks...\n", ret)
 
 	var binPath string
 	var args []string
@@ -122,7 +129,7 @@ func main() {
 	if pyBin, err := exec.LookPath("python3"); err == nil && isNativePyQtAvailable(pyBin) {
 		log.Printf("[INFO] Launching QML UI via native Python PyQt6 engine with SessionBridge: %s\n", pyBin)
 		binPath = pyBin
-		args = []string{pyBin, "-c", `import sys, os, json, time
+		pythonScript := `import sys, os, json, time
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtCore import QObject, pyqtSlot, qInstallMessageHandler, QtMsgType
@@ -161,8 +168,8 @@ class SessionBridge(QObject):
             print("[SESSION] Load error:", e)
         return '{"activeSessionId":"","sessions":[]}'
 
-    @pyqtSlot(str, str, str, str, str, str)
-    def saveSession(self, serverUrl, serverName, serverVersion, userId, username, accessToken):
+    @pyqtSlot(str, str, str, str, str, str, str)
+    def saveSession(self, serverUrl, serverName, serverVersion, userId, username, accessToken, password=''):
         try:
             os.makedirs(config_dir, exist_ok=True)
             data = {"activeSessionId": "", "sessions": []}
@@ -183,6 +190,7 @@ class SessionBridge(QObject):
                 "userId": userId,
                 "username": username,
                 "accessToken": accessToken,
+                "password": password,
                 "lastUsed": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             }
             updated.insert(0, new_sess)
@@ -280,23 +288,24 @@ engine.load(sys.argv[1])
 if not engine.rootObjects():
     sys.exit(1)
 sys.exit(app.exec())
-`, qmlPath}
+`
+		args = []string{pyBin, "-c", pythonScript, qmlPath}
 	} else if qmlBin, err := exec.LookPath("qmlscene"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
-		args = []string{qmlBin, "-name", "bigfin", qmlPath}
+		args = []string{qmlBin, qmlPath}
 	} else if qmlBin, err := exec.LookPath("qmlscene-qt6"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
-		args = []string{qmlBin, "-name", "bigfin", qmlPath}
+		args = []string{qmlBin, qmlPath}
 	} else if qmlBin, err := exec.LookPath("qml6"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
-		args = []string{qmlBin, "-name", "bigfin", qmlPath}
+		args = []string{qmlBin, qmlPath}
 	} else if qmlBin, err := exec.LookPath("qml"); err == nil {
 		log.Printf("[INFO] Launching QML UI via system binary: %s\n", qmlBin)
 		binPath = qmlBin
-		args = []string{qmlBin, "-name", "bigfin", qmlPath}
+		args = []string{qmlBin, qmlPath}
 	} else if flatpakBin, err := exec.LookPath("flatpak"); err == nil {
 		log.Println("[INFO] Native qmlscene binary not found; executing Flatpak org.kde.Sdk environment...")
 		binPath = flatpakBin
@@ -319,7 +328,7 @@ sys.exit(app.exec())
 		if disp := os.Getenv("DISPLAY"); disp != "" {
 			args = append(args, "--env=DISPLAY="+disp)
 		}
-		args = append(args, "--command=qmlscene", "org.kde.Sdk", "-name", "bigfin", qmlPath)
+		args = append(args, "--command=qmlscene", "org.kde.Sdk", qmlPath)
 	} else {
 		log.Fatalf("[ERROR] No suitable QML runtime or Flatpak environment found.")
 	}

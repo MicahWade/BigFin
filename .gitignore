@@ -1,8 +1,9 @@
 # Go Binaries & Build Outputs
-bigfin
-bigfin_app
+/bigfin
+/bigfin_app
 test_player_bin
 bin/
+*.moc
 *.exe
 *.exe.manifest
 *.dll

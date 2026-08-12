@@ -53,7 +53,7 @@ fi
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     log_msg "[INFO] Checking for auto-updates (pulling latest git version)..."
     BEFORE_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
-    if git pull --ff-only >/dev/null 2>&1 || git pull >/dev/null 2>&1; then
+    if timeout 5 git pull --ff-only >/dev/null 2>&1 || timeout 5 git pull >/dev/null 2>&1; then
         AFTER_REV=$(git rev-parse HEAD 2>/dev/null || echo "")
         if [ -n "$BEFORE_REV" ] && [ "$BEFORE_REV" != "$AFTER_REV" ]; then
             log_msg "[SUCCESS] Pulled new version (${BEFORE_REV:0:7} -> ${AFTER_REV:0:7}). Rebuilding binary..."
@@ -122,9 +122,12 @@ fi
 
 log_msg "[INFO] Executing Bigfin app..."
 
-export PYTHONUNBUFFERED=1
-
-if command -v python3 >/dev/null 2>&1 && python3 -c "from PyQt6.QtQml import QQmlApplicationEngine" 2>/dev/null; then
+if [ -f "$SCRIPT_DIR/bin/bigfin_app" ]; then
+    exec "$SCRIPT_DIR/bin/bigfin_app" "$@" >> "$LOG_FILE" 2>&1
+elif [ -f "$SCRIPT_DIR/bigfin" ]; then
+    exec "$SCRIPT_DIR/bigfin" "$@" >> "$LOG_FILE" 2>&1
+elif command -v python3 >/dev/null 2>&1 && python3 -c "from PyQt6.QtQml import QQmlApplicationEngine" 2>/dev/null; then
+    export PYTHONUNBUFFERED=1
     exec python3 -c "import sys, os, json, time
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
@@ -285,8 +288,6 @@ if not engine.rootObjects():
     sys.exit(1)
 sys.exit(app.exec())
 " "$@" >> "$LOG_FILE" 2>&1
-elif [ -f "$SCRIPT_DIR/bin/bigfin_app" ]; then
-    exec "$SCRIPT_DIR/bin/bigfin_app" "$@" >> "$LOG_FILE" 2>&1
 else
     log_msg "[ERROR] No runtime environment found."
     exit 1
