@@ -167,19 +167,26 @@ Item {
         onTriggered: osdVisible = false
     }
 
-    // Remote D-Pad / Controller / Keyboard Input Listeners
+    // Remote D-Pad / Gamepad Controller / Keyboard Input Listeners
     Keys.onPressed: function(event) {
         showOSD()
-        if (event.key === Qt.Key_Space || event.key === Qt.Key_K || event.key === Qt.Key_MediaPlay || event.key === Qt.Key_MediaPause || event.key === Qt.Key_MediaTogglePlayPause) {
+        var k = event.key
+        if (k === Qt.Key_Space || k === Qt.Key_K || k === Qt.Key_MediaPlay || k === Qt.Key_MediaPause || k === Qt.Key_MediaTogglePlayPause || k === Qt.Key_ButtonA || k === Qt.Key_Select || k === Qt.Key_Return || k === Qt.Key_Enter) {
             isPlaying = !isPlaying
             event.accepted = true
-        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_J) {
+        } else if (k === Qt.Key_Left || k === Qt.Key_J || k === Qt.Key_MediaRewind || k === Qt.Key_ButtonL2 || k === Qt.Key_PageUp) {
             currentPosition = Math.max(0, currentPosition - 10)
             event.accepted = true
-        } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
+        } else if (k === Qt.Key_Right || k === Qt.Key_L || k === Qt.Key_MediaFastForward || k === Qt.Key_ButtonR2 || k === Qt.Key_PageDown) {
             currentPosition = Math.min(duration, currentPosition + 10)
             event.accepted = true
-        } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+        } else if (k === Qt.Key_MediaNext || k === Qt.Key_ButtonR1 || k === Qt.Key_N) {
+            currentPosition = Math.min(duration, currentPosition + 30)
+            event.accepted = true
+        } else if (k === Qt.Key_MediaPrevious || k === Qt.Key_ButtonL1 || k === Qt.Key_P) {
+            currentPosition = 0
+            event.accepted = true
+        } else if (k === Qt.Key_Escape || k === Qt.Key_Backspace || k === Qt.Key_Back || k === Qt.Key_ButtonB || k === Qt.Key_MediaStop) {
             playerView.closeRequested()
             event.accepted = true
         }

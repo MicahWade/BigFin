@@ -859,28 +859,80 @@ Item {
 
     Keys.onPressed: function(event) {
         wakeControls()
-        if (event.key === Qt.Key_Space || event.key === Qt.Key_K || event.key === Qt.Key_MediaPlay || event.key === Qt.Key_MediaPause || event.key === Qt.Key_MediaTogglePlayPause) {
-            isPlaying = !isPlaying
+        var k = event.key
+        
+        // Button A / Select / Return / Enter / Space / Play-Pause Keys
+        if (k === Qt.Key_Space || k === Qt.Key_K || k === Qt.Key_MediaPlay || k === Qt.Key_MediaPause || k === Qt.Key_MediaTogglePlayPause || k === Qt.Key_ButtonA || k === Qt.Key_Select || k === Qt.Key_Return || k === Qt.Key_Enter) {
+            if (rewindBtn.activeFocus) {
+                performSeek(Math.max(0, currentPosition - 10))
+            } else if (forwardBtn.activeFocus) {
+                performSeek(Math.min(totalDuration, currentPosition + 10))
+            } else if (nextEpBtn.activeFocus) {
+                playerOverlay.playNextEpisode()
+            } else if (subBtn.activeFocus) {
+                activeSubtitleTrack = (activeSubtitleTrack.indexOf("SDH") !== -1 ? "Off" : "English [SDH]")
+            } else if (playerBackBtn.activeFocus) {
+                playerOverlay.exitPlayer()
+            } else {
+                isPlaying = !isPlaying
+            }
             event.accepted = true
-        } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+        } 
+        // Button B / Exit / Back / Cancel Keys
+        else if (k === Qt.Key_Escape || k === Qt.Key_Backspace || k === Qt.Key_Back || k === Qt.Key_ButtonB || k === Qt.Key_MediaStop) {
             playerOverlay.exitPlayer()
             event.accepted = true
-        } else if (event.key === Qt.Key_J) {
+        } 
+        // Rewind / Seek Backward Keys (-10s): J, MediaRewind, Left Trigger (LT/L2), PageUp
+        else if (k === Qt.Key_J || k === Qt.Key_MediaRewind || k === Qt.Key_ButtonL2 || k === Qt.Key_PageUp) {
             performSeek(Math.max(0, currentPosition - 10))
             event.accepted = true
-        } else if (event.key === Qt.Key_L) {
+        } 
+        // Fast Forward / Seek Forward Keys (+10s): L, MediaFastForward, Right Trigger (RT/R2), PageDown
+        else if (k === Qt.Key_L || k === Qt.Key_MediaFastForward || k === Qt.Key_ButtonR2 || k === Qt.Key_PageDown) {
             performSeek(Math.min(totalDuration, currentPosition + 10))
             event.accepted = true
-        } else if (event.key === Qt.Key_M) {
+        } 
+        // Next Track / Next Episode Keys: MediaNext, Right Bumper (RB/R1), N
+        else if (k === Qt.Key_MediaNext || k === Qt.Key_ButtonR1 || k === Qt.Key_N) {
+            if (playerOverlay.isEpisode) {
+                playerOverlay.playNextEpisode()
+            } else {
+                performSeek(Math.min(totalDuration, currentPosition + 30))
+            }
+            event.accepted = true
+        } 
+        // Previous Track / Restart Keys: MediaPrevious, Left Bumper (LB/L1), P
+        else if (k === Qt.Key_MediaPrevious || k === Qt.Key_ButtonL1 || k === Qt.Key_P) {
+            performSeek(0)
+            event.accepted = true
+        } 
+        // Audio Mute / Subtitle Toggle Keys: M, Button Y (Triangle)
+        else if (k === Qt.Key_M || k === Qt.Key_ButtonY) {
             audioOut.muted = !audioOut.muted
             event.accepted = true
-        } else if (event.key === Qt.Key_D) {
+        } 
+        // Toggle HUD / Overlay Controls Visibility: D, Button X (Square), Menu, Start, Guide
+        else if (k === Qt.Key_D || k === Qt.Key_ButtonX || k === Qt.Key_Menu || k === Qt.Key_ButtonStart || k === Qt.Key_Guide) {
             controlsContainer.visibleControls = !controlsContainer.visibleControls
-            event.accepted = true
-        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-            if (!playPauseBtn.activeFocus && !rewindBtn.activeFocus && !forwardBtn.activeFocus && !seekTrack.activeFocus && !playerBackBtn.activeFocus && !subBtn.activeFocus) {
+            if (controlsContainer.visibleControls) {
                 playPauseBtn.forceActiveFocus()
+            }
+            event.accepted = true
+        } 
+        // D-Pad Navigation Keys (Up, Down, Left, Right)
+        else if (k === Qt.Key_Up || k === Qt.Key_Down || k === Qt.Key_Left || k === Qt.Key_Right) {
+            if (!controlsContainer.visibleControls) {
+                controlsContainer.visibleControls = true
+                if (k === Qt.Key_Left) performSeek(Math.max(0, currentPosition - 10))
+                else if (k === Qt.Key_Right) performSeek(Math.min(totalDuration, currentPosition + 10))
+                playPauseBtn.forceActiveFocus()
+                event.accepted = true
+            } else if (!playPauseBtn.activeFocus && !rewindBtn.activeFocus && !forwardBtn.activeFocus && !seekTrack.activeFocus && !playerBackBtn.activeFocus && !subBtn.activeFocus && !nextEpBtn.activeFocus) {
+                playPauseBtn.forceActiveFocus()
+                event.accepted = true
             }
         }
     }
 }
+

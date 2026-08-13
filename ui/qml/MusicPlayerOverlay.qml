@@ -823,29 +823,82 @@ Item {
         }
     }
 
-    // Keyboard & D-Pad Remote Input Handler
+    // Keyboard & Gamepad Controller / Remote Input Handler
     Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Space || event.key === Qt.Key_K || event.key === Qt.Key_MediaPlay || event.key === Qt.Key_MediaPause || event.key === Qt.Key_MediaTogglePlayPause) {
-            AppData.toggleMusicPlayPause()
+        var k = event.key
+
+        // Button A / Select / Return / Enter / Space / Play-Pause Keys
+        if (k === Qt.Key_Space || k === Qt.Key_K || k === Qt.Key_MediaPlay || k === Qt.Key_MediaPause || k === Qt.Key_MediaTogglePlayPause || k === Qt.Key_ButtonA || k === Qt.Key_Select || k === Qt.Key_Return || k === Qt.Key_Enter) {
+            if (typeof backBtn !== "undefined" && backBtn.activeFocus) {
+                exitPlayer()
+            } else if (typeof prevTrackBtn !== "undefined" && prevTrackBtn.activeFocus) {
+                AppData.prevMusicTrack()
+            } else if (typeof nextTrackBtn !== "undefined" && nextTrackBtn.activeFocus) {
+                AppData.nextMusicTrack()
+            } else if (typeof shuffleBtn !== "undefined" && shuffleBtn.activeFocus) {
+                AppData.toggleMusicShuffle()
+            } else if (typeof repeatBtn !== "undefined" && repeatBtn.activeFocus) {
+                AppData.cycleMusicRepeatMode()
+            } else {
+                AppData.toggleMusicPlayPause()
+            }
             event.accepted = true
-        } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+        } 
+        // Button B / Back / Exit / Cancel Keys
+        else if (k === Qt.Key_Escape || k === Qt.Key_Backspace || k === Qt.Key_Back || k === Qt.Key_ButtonB || k === Qt.Key_MediaStop) {
             exitPlayer()
             event.accepted = true
-        } else if (event.key === Qt.Key_J || event.key === Qt.Key_PageUp) {
+        } 
+        // Previous Track Keys: J, MediaPrevious, Button L1 (LB), PageUp, P
+        else if (k === Qt.Key_J || k === Qt.Key_PageUp || k === Qt.Key_MediaPrevious || k === Qt.Key_ButtonL1 || k === Qt.Key_P) {
             AppData.prevMusicTrack()
             event.accepted = true
-        } else if (event.key === Qt.Key_L || event.key === Qt.Key_PageDown) {
+        } 
+        // Next Track Keys: L, MediaNext, Button R1 (RB), PageDown, N
+        else if (k === Qt.Key_L || k === Qt.Key_PageDown || k === Qt.Key_MediaNext || k === Qt.Key_ButtonR1 || k === Qt.Key_N) {
             AppData.nextMusicTrack()
             event.accepted = true
-        } else if (event.key === Qt.Key_S) {
+        } 
+        // Seek Backward (-10s): MediaRewind, Button L2 (LT)
+        else if (k === Qt.Key_MediaRewind || k === Qt.Key_ButtonL2) {
+            AppData.musicPosition = Math.max(0, AppData.musicPosition - 10)
+            audioStreamPlayer.setPosition(AppData.musicPosition * 1000)
+            event.accepted = true
+        } 
+        // Seek Forward (+10s): MediaFastForward, Button R2 (RT)
+        else if (k === Qt.Key_MediaFastForward || k === Qt.Key_ButtonR2) {
+            AppData.musicPosition = Math.min(AppData.musicDuration, AppData.musicPosition + 10)
+            audioStreamPlayer.setPosition(AppData.musicPosition * 1000)
+            event.accepted = true
+        } 
+        // Toggle Shuffle: S, Button X (Square)
+        else if (k === Qt.Key_S || k === Qt.Key_ButtonX) {
             AppData.toggleMusicShuffle()
             event.accepted = true
-        } else if (event.key === Qt.Key_R) {
+        } 
+        // Cycle Repeat Mode: R, Button Y (Triangle)
+        else if (k === Qt.Key_R || k === Qt.Key_ButtonY) {
             AppData.cycleMusicRepeatMode()
             event.accepted = true
-        } else if (event.key === Qt.Key_M) {
+        } 
+        // Mute / Unmute: M
+        else if (k === Qt.Key_M) {
             audioOut.muted = !audioOut.muted
             event.accepted = true
+        } 
+        // D-Pad Directional Recovery Net
+        else if (k === Qt.Key_Up || k === Qt.Key_Down || k === Qt.Key_Left || k === Qt.Key_Right) {
+            if (typeof playPauseBtn !== "undefined" && !playPauseBtn.activeFocus && 
+                typeof backBtn !== "undefined" && !backBtn.activeFocus && 
+                typeof seekTrack !== "undefined" && !seekTrack.activeFocus && 
+                typeof prevTrackBtn !== "undefined" && !prevTrackBtn.activeFocus && 
+                typeof nextTrackBtn !== "undefined" && !nextTrackBtn.activeFocus && 
+                typeof shuffleBtn !== "undefined" && !shuffleBtn.activeFocus && 
+                typeof repeatBtn !== "undefined" && !repeatBtn.activeFocus) {
+                playPauseBtn.forceActiveFocus()
+                event.accepted = true
+            }
         }
     }
 }
+

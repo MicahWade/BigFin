@@ -704,7 +704,7 @@ Item {
 
     // Global Key Bindings for Keyboard & Gamepad Controller
     Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back) {
+        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace || event.key === Qt.Key_Back || event.key === Qt.Key_ButtonB) {
             if (mainShell.showStartupServerModal) {
                 // Cannot bypass modal until authenticated
                 event.accepted = true
